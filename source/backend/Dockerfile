@@ -1,3 +1,9 @@
+# Який образ збирати без явного `--target`: `api` або `worker`. Railway
+# не вміє обирати ціль збірки, зате передає змінні сервісу як build-arg —
+# тому воркер на Railway задає CRAWLDY_IMAGE=worker. Compose і далі
+# вказує `target:` явно, і цей аргумент його не стосується.
+ARG CRAWLDY_IMAGE=api
+
 # ── збірка залежностей ─────────────────────────────────────────────────
 # Компілятор потрібен лише тут, на випадок пакета без готового wheel. У
 # runtime-образ потрапляє тільки готове оточення /opt/venv: ні gcc, ні curl
@@ -40,7 +46,8 @@ COPY . .
 RUN pip install -e . --no-deps
 
 USER app
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# PORT задає хостинг (Railway); локально й у compose — 8000.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
 
 # Браузер ставиться лише воркеру: рендерить він, а API за інваріантом у
@@ -58,3 +65,11 @@ RUN playwright install --with-deps chromium && \
     chmod -R a+rX /ms-playwright
 USER app
 CMD ["arq", "app.worker.main.WorkerSettings"]
+
+
+# ── фінальний образ за CRAWLDY_IMAGE ───────────────────────────────────
+# BuildKit збирає лише стадії, потрібні обраній: для `api` шар із
+# Chromium не збирається взагалі.
+FROM base AS final-api
+FROM worker AS final-worker
+FROM final-${CRAWLDY_IMAGE}
