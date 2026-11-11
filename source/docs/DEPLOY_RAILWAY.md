@@ -6,25 +6,23 @@
 
 ## 1. Склад проєкту
 
-В одному проєкті Railway працюють п'ять сервісів:
+В одному проєкті Railway працюють п'ять сервісів. Config-as-code
+(`railway.json`) Railway визнав застарілим і для нових сервісів не
+приймає, тому все задається в **Settings** кожного сервісу.
 
-| Сервіс | Звідки | Root Directory | Config file |
-|---|---|---|---|
-| `api` | GitHub `YevhenDrevs/Crawldy` | `/source/backend` | `/source/backend/railway.api.json` |
-| `worker` | GitHub `YevhenDrevs/Crawldy` | `/source/backend` | `/source/backend/railway.worker.json` |
-| `web` | GitHub `YevhenDrevs/Crawldy` | `/source/frontend` | `/source/frontend/railway.json` |
-| `Postgres` | шаблон Railway | — | — |
-| `Redis` | шаблон Railway (одразу з паролем) | — | — |
-
-Шлях до config-файлу Railway рахує від кореня репозиторію, тому він
-абсолютний: на Root Directory він не зважає.
+| Сервіс | Root Directory | Builder | Watch Paths | Pre-deploy | Healthcheck | Порт |
+|---|---|---|---|---|---|---|
+| `api` | `/source/backend` | Dockerfile | `/source/backend/**` | `alembic upgrade head` | `/health` | `PORT=8000` |
+| `worker` | `/source/backend` | Dockerfile | `/source/backend/**` | — | — | — |
+| `web` | `/source/frontend` | Dockerfile | `/source/frontend/**` | — | `/` | `PORT=3000` |
+| `Postgres` | шаблон Railway | | | | | |
+| `Redis` | шаблон Railway (одразу з паролем) | | | | | |
 
 Що вже налаштовано в репозиторії:
 - API і воркер збираються з одного `backend/Dockerfile`. Який образ збирати,
-  визначає змінна `CRAWLDY_IMAGE` (`api` або `worker`), бо обрати ціль
-  збірки Railway не вміє. Лише образ воркера містить Chromium.
-- Перед кожним деплоєм `api` виконується `alembic upgrade head`. Healthcheck
-  — `/health`.
+  визначає змінна `CRAWLDY_IMAGE` (`api` за замовчуванням, `worker` для
+  воркера), бо обрати ціль збірки Railway не вміє. Лише образ воркера
+  містить Chromium.
 - `web` будується з `frontend/Dockerfile`. Без `NEXT_PUBLIC_API_URL`
   збірка зупиняється з помилкою.
 - Адресу бази у форматі `postgres://…`, як її віддає Railway, застосунок
@@ -34,45 +32,46 @@
 
 ## 2. Створення сервісів
 
-1. У проєкті натиснути **+ New → Database → PostgreSQL**, потім **+ New → Database → Redis**.
-2. Сервіс, уже підключений до репозиторію, перейменувати на `api`. У
-   **Settings** вказати:
-   - **Source → Root Directory:** `/source/backend`;
-   - **Config-as-code → Railway Config File:** `/source/backend/railway.api.json`;
-   - **Branch:** `main`.
-3. **+ New → GitHub Repo → YevhenDrevs/Crawldy**, перейменувати на `worker`.
-   Root Directory той самий, Config File `/source/backend/railway.worker.json`.
-4. Ще раз **+ New → GitHub Repo**, назва `web`. Root Directory
-   `/source/frontend`, Config File `/source/frontend/railway.json`.
-5. Для `api` і `web` у **Settings → Networking → Generate Domain** створити
-   тимчасові адреси `*.up.railway.app`. Вони потрібні, щоб заповнити змінні
-   нижче. `worker` публічна адреса не потрібна.
-6. **Project Settings → Usage:** поставити ліміт витрат.
+1. **Add → Database → PostgreSQL**, потім **Add → Database → Redis**.
+2. Сервіс, підключений до репозиторію, перейменувати на `api` і задати
+   налаштування з таблиці §1. Гілка `main`.
+3. `worker` і `web` створити через **Duplicate** у контекстному меню `api`:
+   налаштування й джерело копіюються. Потім виправити їх за таблицею.
+   Якщо GitHub-застосунок Railway має доступ до репозиторію, можна й через
+   **Add → GitHub Repository**.
+4. Для `api` і `web` у **Settings → Networking → Generate Domain** створити
+   тимчасові адреси `*.up.railway.app`. Для `api` вказати порт 8000.
+   `worker` публічна адреса не потрібна.
+5. **Project Settings → Usage:** поставити ліміт витрат.
+
+Якщо в налаштуваннях сервісу видно «Could not load branches», значить
+GitHub-застосунок Railway не має доступу до `YevhenDrevs/Crawldy`. Видати
+доступ: GitHub → Settings → Applications → Railway → Configure.
 
 ## 3. Змінні
 
 `${{…}}` — це посилання Railway на змінні іншого сервісу. Їх вставляють
-так, як написано.
+так, як написано. Найзручніше — через **Variables → Raw Editor**.
 
-### 3.1 Спільні змінні (Project → Settings → Shared Variables)
-
-Їх потребують і `api`, і `worker`. В обох сервісах кожну додати через
-**Variables → Shared Variable**.
+### 3.1 `api` (тут живуть усі секрети)
 
 | Змінна | Значення |
 |---|---|
 | `APP_ENV` | `prod` (див. примітку нижче) |
+| `PORT` | `8000` |
+| `LOG_LEVEL` | `INFO` |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
-| `PUBLIC_APP_URL` | `https://<web-домен>`; після підключення домену — `https://crawldy.ai` |
+| `PUBLIC_APP_URL` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}`; після підключення домену — `https://crawldy.ai` |
 | `CORS_ORIGINS` | так само, як `PUBLIC_APP_URL` |
-| `API_KEYS` | порожньо, або власний ключ, якщо потрібен глобальний доступ |
-| `IP_HASH_SALT` | випадковий рядок ≥16 символів |
+| `API_KEYS` | `""` (порожньо), або власний ключ, якщо потрібен глобальний доступ |
 | `TRUSTED_PROXY_COUNT` | `1` (перевірити після деплою, див. §5) |
-| `SECRETS_KEY` | ключ Fernet (команда нижче) |
-| `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `MAIL_SENDER` | дані SMTP |
 | `BILLING_PROVIDER` | `paddle` |
 | `PADDLE_ENV` | спершу `sandbox`, потім `live` |
+| **Секрети, вводить власник:** | |
+| `IP_HASH_SALT` | випадковий рядок ≥16 символів |
+| `SECRETS_KEY` | ключ Fernet (команда нижче) |
+| `MAIL_SMTP_HOST`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `MAIL_SENDER` (+ `MAIL_SMTP_PORT`, якщо не 587) | дані SMTP |
 | `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET` | з кабінету Paddle |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | з Cloudflare Turnstile |
 | `CONTACT_*` | пошта для форми контактів (як у `.env.example`) |
@@ -92,22 +91,28 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 > `/health/ready` повертає 503 через пошту. Перед відкриттям для людей
 > обов'язково повернути `prod`.
 
-### 3.2 Лише `worker`
+### 3.2 `worker`
+
+Воркер посилається на змінні `api`, тому секрети вводяться один раз.
 
 | Змінна | Значення |
 |---|---|
 | `CRAWLDY_IMAGE` | `worker` |
 | `RENDER_CHROMIUM_SANDBOX` | `false` |
+| `APP_ENV`, `LOG_LEVEL`, `DATABASE_URL`, `REDIS_URL`, `PUBLIC_APP_URL`, `CORS_ORIGINS`, `API_KEYS`, `TRUSTED_PROXY_COUNT`, `BILLING_PROVIDER`, `PADDLE_ENV`, `IP_HASH_SALT`, `SECRETS_KEY`, `MAIL_SENDER`, `MAIL_REPLY_TO`, `MAIL_SMTP_HOST`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PSI_API_KEY`, `ANTHROPIC_API_KEY` | кожна як `${{api.<ІМʼЯ>}}` |
+
+Нова змінна, потрібна воркеру, додається в `api` і посиланням сюди.
 
 На Railway не можна підключити seccomp-профіль `deploy/seccomp/chromium.json`,
 тож sandbox Chromium не стартує. Захист від SSRF у браузері (`_RouteGuard`)
 від цього не залежить. Що це означає для безпеки, описано в §6.
 
-### 3.3 Лише `web`
+### 3.3 `web`
 
 | Змінна | Значення |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://<api-домен>`; після підключення домену — `https://api.crawldy.ai` |
+| `PORT` | `3000` |
+| `NEXT_PUBLIC_API_URL` | `https://${{api.RAILWAY_PUBLIC_DOMAIN}}`; після підключення домену — `https://api.crawldy.ai` |
 | `HSTS_ENABLED` | `false` до підключення домену, потім `true` |
 | `TRUSTED_PROXY_COUNT` | `1` |
 
