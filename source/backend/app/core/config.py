@@ -314,6 +314,21 @@ class Settings(BaseSettings):
             return None
         return v
 
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _async_driver(cls, v: str) -> str:
+        """`postgres://…` від хостингу → `postgresql+asyncpg://…`.
+
+        Railway, Heroku й подібні віддають адресу бази без драйвера, а
+        SQLAlchemy без `+asyncpg` бере синхронний psycopg, якого в образі
+        немає. Склеювати адресу вручну зі змінних хостингу — зайве місце
+        для помилки, тож приводимо тут.
+        """
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+asyncpg://" + v[len(prefix) :]
+        return v
+
     @model_validator(mode="after")
     def _production_mail_is_configured(self) -> "Settings":
         """У проді пошта мусить бути налаштована ЯВНО.
