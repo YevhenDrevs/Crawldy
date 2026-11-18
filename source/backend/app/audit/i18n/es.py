@@ -861,14 +861,15 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "llm.crawler_blocked.grounding": {
-        "title": "{count} rastreadores de grounding bloqueados: {crawlers}",
+        "title": "El grounding de IA está denegado: {crawlers}",
         "description": (
-            "Estos tokens controlan si el contenido que el proveedor recoge de tu sitio puede "
-            "usarse para grounding — es decir, entregarse al modelo en el momento de la consulta "
-            "— dentro de los productos de IA de ese mismo proveedor. Google-Extended abarca "
-            "Gemini Apps y Vertex AI. robots.txt les impide llegar a las páginas de la evidencia. "
-            "Google señala que este token no afecta a la inclusión ni al posicionamiento en la "
-            "Búsqueda de Google, así que no es un problema de búsqueda."
+            "Estos tokens no son rastreadores, sino permisos: indican si el contenido que el "
+            "proveedor ya ha recogido puede usarse para grounding — es decir, entregarse al modelo "
+            "en el momento de la consulta — dentro de los productos de IA de ese mismo proveedor. "
+            "Google-Extended abarca Gemini Apps y Vertex AI. Tu robots.txt no concede ese permiso "
+            "para las rutas de la evidencia; con ello no se impide ninguna descarga. Google señala "
+            "que este token no afecta a la inclusión ni al posicionamiento en la Búsqueda de "
+            "Google, así que no es un problema de búsqueda."
         ),
         "recommendation": (
             "Si el bloqueo no era intencionado, permite estos user-agent. Ten en cuenta que el "
@@ -910,8 +911,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "controlan el acceso para entrenamiento."
         ),
         "consequence": (
-            "Tus textos quedan fuera del entrenamiento de modelos. Es una decisión sobre tu "
-            "contenido, no un defecto del sitio."
+            "Tu sitio pide a estas empresas que no usen sus textos para entrenar modelos. Si "
+            "atienden esa petición es algo que no comprobamos. Es una decisión sobre tu contenido, "
+            "no un defecto del sitio."
         ),
     },
     "llm.client_rendered": {

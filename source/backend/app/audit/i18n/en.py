@@ -845,13 +845,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "llm.crawler_blocked.grounding": {
-        "title": "{count} AI grounding crawlers are blocked: {crawlers}",
+        "title": "AI grounding is disallowed: {crawlers}",
         "description": (
-            "These tokens control whether content the vendor crawls from your site may be used "
-            "for grounding — supplied to the model at prompt time — inside that vendor's own AI "
-            "products. Google-Extended covers Gemini Apps and Vertex AI. robots.txt prevents them "
-            "from reaching the pages listed in the evidence. Google states this token does not "
-            "affect inclusion or ranking in Google Search, so this is not a Search problem."
+            "These tokens are permissions, not fetchers: they say whether content the vendor has "
+            "already collected may be used for grounding — supplied to the model at prompt time — "
+            "inside that vendor's own AI products. Google-Extended covers Gemini Apps and Vertex "
+            "AI. Your robots.txt withholds that permission for the paths listed in the evidence; "
+            "nothing is stopped from loading. Google states this token does not affect inclusion "
+            "or ranking in Google Search, so this is not a Search problem."
         ),
         "recommendation": (
             "If the block was not intended, allow these user-agents. Note that the same token "
@@ -894,8 +895,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "they control training access only."
         ),
         "consequence": (
-            "Your texts are kept out of model training. This is a choice about your content, not "
-            "a fault on the site."
+            "Your site asks these companies not to use its texts for model training. Whether they "
+            "honour that request is not something we check. This is a choice about your content, "
+            "not a fault on the site."
         ),
     },
     "llm.client_rendered": {

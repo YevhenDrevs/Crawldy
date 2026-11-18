@@ -875,14 +875,15 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "llm.crawler_blocked.grounding": {
-        "title": "{count} KI-Grounding-Crawler sind blockiert: {crawlers}",
+        "title": "KI-Grounding ist untersagt: {crawlers}",
         "description": (
-            "Diese Tokens steuern, ob Inhalte, die der Anbieter von Ihrer Website erfasst, für "
-            "Grounding — also zur Übergabe an das Modell zum Zeitpunkt der Anfrage — in den "
-            "eigenen KI-Produkten dieses Anbieters verwendet werden dürfen. Google-Extended "
-            "betrifft Gemini Apps und Vertex AI. robots.txt verwehrt ihnen die im Nachweis "
-            "genannten Seiten. Google betont, dass dieses Token weder Aufnahme noch Ranking in "
-            "der Google-Suche beeinflusst — es ist also kein Suchproblem."
+            "Diese Tokens sind keine Abrufer, sondern Erlaubnisse: Sie legen fest, ob Inhalte, die "
+            "der Anbieter bereits erfasst hat, für Grounding — also zur Übergabe an das Modell zum "
+            "Zeitpunkt der Anfrage — in den eigenen KI-Produkten dieses Anbieters verwendet werden "
+            "dürfen. Google-Extended betrifft Gemini Apps und Vertex AI. Ihre robots.txt erteilt "
+            "diese Erlaubnis für die im Nachweis genannten Pfade nicht; ein Abruf wird dadurch "
+            "nicht verhindert. Google betont, dass dieses Token weder Aufnahme noch Ranking in der "
+            "Google-Suche beeinflusst — es ist also kein Suchproblem."
         ),
         "recommendation": (
             "War die Sperre nicht beabsichtigt, erlauben Sie diese User-Agents. Beachten Sie: "
@@ -925,7 +926,8 @@ MESSAGES: dict[str, dict[str, str]] = {
             "sie steuern ausschließlich den Trainingszugriff."
         ),
         "consequence": (
-            "Ihre Texte bleiben aus dem Modelltraining heraus. Das ist eine Entscheidung über "
+            "Ihre Website bittet diese Unternehmen, ihre Texte nicht für das Modelltraining zu "
+            "verwenden. Ob sie sich daran halten, prüfen wir nicht. Das ist eine Entscheidung über "
             "Ihre Inhalte, kein Mangel der Website."
         ),
     },
