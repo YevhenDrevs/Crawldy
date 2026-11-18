@@ -148,12 +148,12 @@ describe("покриття каже одну річ, а не дві супере
     // Головний випадок свіжого приймання: екран показував «10 із 52» і
     // мовчав про решту. Число рахується, а не зашите.
     const expected: Record<string, string> = {
-      en: "42 pages could not be checked.",
-      uk: "42 сторінки не вдалося перевірити.",
-      de: "42 Seiten konnten nicht geprüft werden.",
-      es: "No se pudieron comprobar 42 páginas.",
-      fr: "42 pages n’ont pas pu être vérifiées.",
-      ru: "Не удалось проверить 42 страницы.",
+      en: "The remaining 42 pages were not checked in this run.",
+      uk: "Ще 42 сторінки цього разу не перевіряли.",
+      de: "Die verbleibenden 42 Seiten haben wir diesmal nicht geprüft.",
+      es: "Las 42 páginas restantes no se comprobaron en este análisis.",
+      fr: "Les 42 pages restantes n’ont pas été vérifiées lors de cette analyse.",
+      ru: "Ещё 42 страницы в этот раз не проверяли.",
     };
     for (const locale of LOCALES) {
       expect(plural(locale, "free.coverage.unchecked", 52 - 10), locale).toBe(
