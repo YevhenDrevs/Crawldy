@@ -876,14 +876,16 @@ MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "llm.crawler_blocked.grounding": {
-        "title": "{count} robots de grounding bloqués : {crawlers}",
+        "title": "Le grounding IA n’est pas autorisé : {crawlers}",
         "description": (
-            "Ces tokens déterminent si le contenu que le fournisseur collecte sur votre site peut "
-            "servir au grounding — c’est-à-dire être transmis au modèle au moment de la requête — "
-            "au sein des produits d’IA de ce même fournisseur. Google-Extended concerne Gemini "
-            "Apps et Vertex AI. robots.txt les empêche d’atteindre les pages des preuves. Google "
-            "précise que ce token n’affecte ni l’inclusion ni le classement dans la recherche "
-            "Google : ce n’est donc pas un problème de recherche."
+            "Ces tokens ne sont pas des robots de collecte mais des autorisations : ils indiquent "
+            "si le contenu que le fournisseur a déjà collecté peut servir au grounding — "
+            "c’est-à-dire être transmis au modèle au moment de la requête — au sein des produits "
+            "d’IA de ce même fournisseur. Google-Extended concerne Gemini Apps et Vertex AI. Votre "
+            "robots.txt n’accorde pas cette autorisation pour les chemins indiqués dans les "
+            "preuves ; aucun chargement n’en est empêché. Google précise que ce token n’affecte ni "
+            "l’inclusion ni le classement dans la recherche Google : ce n’est donc pas un problème "
+            "de recherche."
         ),
         "recommendation": (
             "Si le blocage n’était pas voulu, autorisez ces user-agents. Notez que le même token "
@@ -925,8 +927,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "contrôlent que l’accès à l’entraînement."
         ),
         "consequence": (
-            "Vos textes restent hors de l’entraînement des modèles. C’est un choix sur vos "
-            "contenus, pas un défaut du site."
+            "Votre site demande à ces entreprises de ne pas utiliser ses textes pour entraîner des "
+            "modèles. Nous ne vérifions pas si elles respectent cette demande. C’est un choix sur "
+            "vos contenus, pas un défaut du site."
         ),
     },
     "llm.client_rendered": {

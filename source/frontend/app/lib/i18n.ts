@@ -502,8 +502,8 @@ const en: Dict = {
   "free.coverage.checked.other": "{read} of {known} pages found were checked.",
   "free.scoreImpact": "Score impact: {points}",
   "free.coverage": "Coverage",
-  "free.coverage.unchecked.one": "1 page could not be checked.",
-  "free.coverage.unchecked.other": "{count} pages could not be checked.",
+  "free.coverage.unchecked.one": "The remaining page was not checked in this run.",
+  "free.coverage.unchecked.other": "The remaining {count} pages were not checked in this run.",
 };
 
 const uk: Dict = {
@@ -993,10 +993,10 @@ const uk: Dict = {
   "free.coverage.checked.other": "Перевірено {read} із {known} знайдених сторінок.",
   "free.scoreImpact": "Вплив на бал: {points}",
   "free.coverage": "Покриття",
-  "free.coverage.unchecked.one": "Одну сторінку не вдалося перевірити.",
-  "free.coverage.unchecked.few": "{count} сторінки не вдалося перевірити.",
-  "free.coverage.unchecked.many": "{count} сторінок не вдалося перевірити.",
-  "free.coverage.unchecked.other": "{count} сторінок не вдалося перевірити.",
+  "free.coverage.unchecked.one": "Ще одну сторінку цього разу не перевіряли.",
+  "free.coverage.unchecked.few": "Ще {count} сторінки цього разу не перевіряли.",
+  "free.coverage.unchecked.many": "Ще {count} сторінок цього разу не перевіряли.",
+  "free.coverage.unchecked.other": "Ще {count} сторінок цього разу не перевіряли.",
 };
 
 /**
@@ -1177,8 +1177,8 @@ const de: Dict = {
   "free.issuesFound.one": "{count} Problem gefunden",
   "free.issuesFound.other": "{count} Probleme gefunden",
   "free.coverage": "Abdeckung",
-  "free.coverage.unchecked.one": "1 Seite konnte nicht geprüft werden.",
-  "free.coverage.unchecked.other": "{count} Seiten konnten nicht geprüft werden.",
+  "free.coverage.unchecked.one": "Die verbleibende Seite haben wir diesmal nicht geprüft.",
+  "free.coverage.unchecked.other": "Die verbleibenden {count} Seiten haben wir diesmal nicht geprüft.",
   // --- доповнено 2026-09-08: кабінет шістьма мовами. Джерело
   // правди — англійський словник; плейсхолдери звірені.
   "nav.dashboard": "Dashboard",
@@ -1597,8 +1597,8 @@ const es: Dict = {
   "free.issuesFound.one": "Se encontró {count} problema",
   "free.issuesFound.other": "Se encontraron {count} problemas",
   "free.coverage": "Cobertura",
-  "free.coverage.unchecked.one": "No se pudo comprobar 1 página.",
-  "free.coverage.unchecked.other": "No se pudieron comprobar {count} páginas.",
+  "free.coverage.unchecked.one": "La página restante no se comprobó en este análisis.",
+  "free.coverage.unchecked.other": "Las {count} páginas restantes no se comprobaron en este análisis.",
   // --- доповнено 2026-09-08: кабінет шістьма мовами. Джерело
   // правди — англійський словник; плейсхолдери звірені.
   "nav.dashboard": "Panel",
@@ -2017,8 +2017,8 @@ const fr: Dict = {
   "free.issuesFound.one": "{count} problème trouvé",
   "free.issuesFound.other": "{count} problèmes trouvés",
   "free.coverage": "Couverture",
-  "free.coverage.unchecked.one": "1 page n’a pas pu être vérifiée.",
-  "free.coverage.unchecked.other": "{count} pages n’ont pas pu être vérifiées.",
+  "free.coverage.unchecked.one": "La page restante n’a pas été vérifiée lors de cette analyse.",
+  "free.coverage.unchecked.other": "Les {count} pages restantes n’ont pas été vérifiées lors de cette analyse.",
   // --- доповнено 2026-09-08: кабінет шістьма мовами. Джерело
   // правди — англійський словник; плейсхолдери звірені.
   "nav.dashboard": "Tableau de bord",
@@ -2444,10 +2444,10 @@ const ru: Dict = {
   "free.issuesFound.many": "Найдено {count} проблем",
   "free.issuesFound.other": "Найдено {count} проблем",
   "free.coverage": "Охват",
-  "free.coverage.unchecked.one": "Не удалось проверить одну страницу.",
-  "free.coverage.unchecked.few": "Не удалось проверить {count} страницы.",
-  "free.coverage.unchecked.many": "Не удалось проверить {count} страниц.",
-  "free.coverage.unchecked.other": "Не удалось проверить {count} страниц.",
+  "free.coverage.unchecked.one": "Ещё одну страницу в этот раз не проверяли.",
+  "free.coverage.unchecked.few": "Ещё {count} страницы в этот раз не проверяли.",
+  "free.coverage.unchecked.many": "Ещё {count} страниц в этот раз не проверяли.",
+  "free.coverage.unchecked.other": "Ещё {count} страниц в этот раз не проверяли.",
   // --- доповнено 2026-09-08: кабінет шістьма мовами. Джерело
   // правди — англійський словник; плейсхолдери звірені.
   "nav.dashboard": "Обзор",
