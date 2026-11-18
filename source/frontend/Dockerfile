@@ -15,7 +15,9 @@ COPY . .
 # build-arg лише тоді, коли вони оголошені тут.
 ARG NEXT_PUBLIC_API_URL
 ARG HSTS_ENABLED=false
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} HSTS_ENABLED=${HSTS_ENABLED}
+# Аналітика Plausible: повна адреса скрипта сайту. Порожньо — вимкнено.
+ARG NEXT_PUBLIC_PLAUSIBLE_SRC=
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} HSTS_ENABLED=${HSTS_ENABLED}     NEXT_PUBLIC_PLAUSIBLE_SRC=${NEXT_PUBLIC_PLAUSIBLE_SRC}
 RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "NEXT_PUBLIC_API_URL не задано" >&2; exit 1)
 RUN npm run build && npm prune --omit=dev
 

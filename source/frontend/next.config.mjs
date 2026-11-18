@@ -40,6 +40,7 @@ const MIRROR_HOSTS = ["crawldy.com", "www.crawldy.com", "www.crawldy.ai"];
 const SECURITY_HEADERS = securityHeaders({
   hsts: process.env.HSTS_ENABLED === "true",
   apiUrl: process.env.NEXT_PUBLIC_API_URL,
+  analyticsSrc: process.env.NEXT_PUBLIC_PLAUSIBLE_SRC,
 });
 
 /** @type {import('next').NextConfig} */
