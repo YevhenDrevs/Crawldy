@@ -1,5 +1,6 @@
 import { Manrope } from "next/font/google";
 
+import { Analytics } from "./components/Analytics";
 import "./globals.css";
 
 /**
@@ -47,7 +48,10 @@ export function Document({
 }) {
   return (
     <html lang={lang} dir={dir} className={manrope.variable}>
-      <body className="bg-background text-primary antialiased">{children}</body>
+      <body className="bg-background text-primary antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

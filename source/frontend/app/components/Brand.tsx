@@ -12,6 +12,8 @@
  *
  * ## Джерела
  *
+ * Сторінки отримують WebP (див. `BrandImage`); PNG нижче — першоджерело.
+ *
  * `crawldy-horizontal.png` — горизонтальний локап дизайнера (знак і
  * напис поруч), даунскейл із оригіналу 4348×876 без інших змін.
  *
@@ -34,10 +36,59 @@ import { cx } from "../lib/cx";
 
 /* Власні розміри файлів. Потрібні браузеру, щоб зарезервувати місце до
  * завантаження — інакше сторінка смикається, коли логотип приходить. */
-const MARK = { src: "/brand/crawldy-mark.png", w: 400, h: 385 };
-const WORDMARK = { src: "/brand/crawldy-wordmark.png", w: 1200, h: 289 };
-const HORIZONTAL = { src: "/brand/crawldy-horizontal.png", w: 1600, h: 322 };
-const VERTICAL = { src: "/brand/crawldy-vertical.png", w: 1000, h: 542 };
+const MARK = asset("crawldy-mark", 400, 385);
+const WORDMARK = asset("crawldy-wordmark", 1200, 289);
+const HORIZONTAL = asset("crawldy-horizontal", 1600, 322);
+const VERTICAL = asset("crawldy-vertical", 1000, 542);
+
+type BrandAsset = { png: string; webp: string; w: number; h: number };
+
+function asset(name: string, w: number, h: number): BrandAsset {
+  return { png: `/brand/${name}.png`, webp: `/brand/${name}.webp`, w, h };
+}
+
+/**
+ * Файл дизайнера у двох форматах: WebP для браузера, PNG як запасний.
+ *
+ * WebP генерує `scripts/brand-webp.mjs` із PNG без втрат — пікселі ті самі,
+ * важить удвічі менше. PNG лишається першоджерелом і запасним варіантом.
+ *
+ * `display: contents` на `<picture>` обовʼязковий: без нього обгортка сама
+ * стає flex-елементом батька замість `<img>`, і `shrink-0`, розміри й
+ * вирівнювання в шапці перестають діяти — шапка зʼїжджає.
+ *
+ * Не next/image: той керує розмірами сам, а тут пропорції — частина
+ * знака. Звичайний <img> із власними width/height лишає їх точними.
+ */
+function BrandImage({
+  asset,
+  alt,
+  className,
+  style,
+  decorative = false,
+}: {
+  asset: BrandAsset;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+  decorative?: boolean;
+}) {
+  return (
+    <picture style={{ display: "contents" }}>
+      <source type="image/webp" srcSet={asset.webp} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={asset.png}
+        alt={alt}
+        aria-hidden={decorative || undefined}
+        width={asset.w}
+        height={asset.h}
+        className={className}
+        style={style}
+      />
+    </picture>
+  );
+}
 
 /** Лише знак. Висота задає розмір, ширина рахується з пропорцій файлу. */
 export function Logomark({
@@ -48,15 +99,10 @@ export function Logomark({
   className?: string;
 }) {
   return (
-    // Не next/image: той керує розмірами сам, а тут пропорції — частина
-    // знака. Звичайний <img> із власними width/height лишає їх точними.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={MARK.src}
+    <BrandImage
+      asset={MARK}
       alt=""
-      aria-hidden
-      width={MARK.w}
-      height={MARK.h}
+      decorative
       className={cx("shrink-0", className)}
       style={{ height, width: (height * MARK.w) / MARK.h }}
     />
@@ -72,12 +118,9 @@ export function Wordmark({
   className?: string;
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={WORDMARK.src}
+    <BrandImage
+      asset={WORDMARK}
       alt="Crawldy"
-      width={WORDMARK.w}
-      height={WORDMARK.h}
       className={cx("shrink-0", className)}
       style={{ height, width: (height * WORDMARK.w) / WORDMARK.h }}
     />
@@ -98,12 +141,9 @@ export function Logo({
   className?: string;
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={HORIZONTAL.src}
+    <BrandImage
+      asset={HORIZONTAL}
       alt="Crawldy"
-      width={HORIZONTAL.w}
-      height={HORIZONTAL.h}
       className={cx("shrink-0", className)}
       style={{ height, width: (height * HORIZONTAL.w) / HORIZONTAL.h }}
     />
@@ -122,12 +162,9 @@ export function LogoStacked({
   className?: string;
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={VERTICAL.src}
+    <BrandImage
+      asset={VERTICAL}
       alt="Crawldy"
-      width={VERTICAL.w}
-      height={VERTICAL.h}
       className={cx("h-auto", className)}
       style={{ width }}
     />

@@ -47,32 +47,36 @@ function originOf(url) {
   }
 }
 
-function fullCsp(apiUrl) {
+function fullCsp(apiUrl, analyticsSrc) {
   const api = originOf(apiUrl ?? "");
+  // Plausible: скрипт і події йдуть з одного origin (plausible.io або
+  // власний хост), тож одного джерела досить для обох директив.
+  const analytics = originOf(analyticsSrc ?? "");
+  const extra = (origin) => (origin ? ` ${origin}` : "");
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' ${PADDLE[0]} ${TURNSTILE}`,
+    `script-src 'self' 'unsafe-inline' ${PADDLE[0]} ${TURNSTILE}${extra(analytics)}`,
     `style-src 'self' 'unsafe-inline' ${PADDLE[0]}`,
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    `connect-src 'self'${api ? ` ${api}` : ""} ${PADDLE.join(" ")} ${TURNSTILE}`,
+    `connect-src 'self'${extra(api)} ${PADDLE.join(" ")} ${TURNSTILE}${extra(analytics)}`,
     `frame-src ${PADDLE.join(" ")} ${TURNSTILE}`,
     ENFORCED_CSP,
   ].join("; ");
 }
 
 /**
- * @param {{ hsts?: boolean, apiUrl?: string }} options
+ * @param {{ hsts?: boolean, apiUrl?: string, analyticsSrc?: string }} options
  * @returns {{ key: string, value: string }[]}
  */
-export function securityHeaders({ hsts = false, apiUrl } = {}) {
+export function securityHeaders({ hsts = false, apiUrl, analyticsSrc } = {}) {
   const headers = [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=()" },
     { key: "Content-Security-Policy", value: ENFORCED_CSP },
-    { key: "Content-Security-Policy-Report-Only", value: fullCsp(apiUrl) },
+    { key: "Content-Security-Policy-Report-Only", value: fullCsp(apiUrl, analyticsSrc) },
   ];
   // HSTS — лише на справжньому домені з HTTPS: поставлений наосліп, він
   // або не робить нічого, або замикає браузер на схему, якої сайт не

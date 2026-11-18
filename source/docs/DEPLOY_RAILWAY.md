@@ -115,9 +115,13 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 | `NEXT_PUBLIC_API_URL` | `https://${{api.RAILWAY_PUBLIC_DOMAIN}}`; після підключення домену — `https://api.crawldy.ai` |
 | `HSTS_ENABLED` | `false` до підключення домену, потім `true` |
 | `TRUSTED_PROXY_COUNT` | `1` |
+| `NEXT_PUBLIC_PLAUSIBLE_SRC` | адреса скрипта сайту з Plausible (**Settings → General → Site installation**), вигляду `https://plausible.io/js/pa-….js`; порожньо — аналітика вимкнена |
 
-`NEXT_PUBLIC_API_URL` і `HSTS_ENABLED` вшиваються в бандл під час збірки. Тому
-якщо змінити будь-яку з них, `web` треба перезібрати (**Redeploy**).
+`NEXT_PUBLIC_API_URL`, `HSTS_ENABLED` і `NEXT_PUBLIC_PLAUSIBLE_SRC` вшиваються в
+бандл під час збірки. Тому якщо змінити будь-яку з них, `web` треба перезібрати
+(**Redeploy**) і переконатися в Deployments, що збірка йде з потрібного коміту.
+Origin скрипта Plausible автоматично потрапляє в CSP (`script-src` і
+`connect-src`).
 
 ## 4. Перший деплой і перевірка
 

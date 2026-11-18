@@ -1,16 +1,19 @@
 /**
  * Політика краулерів: навчальні заборонені, пошукові та за запитом людини —
- * відкриті.
- *
- * Рішення записане давно, а в `robots.ts` його не було: групу навчальних
- * закривав `anthropic-ai` — токен, якого в документації Anthropic уже немає,
- * — тоді як чинний навчальний краулер `ClaudeBot` проходив за wildcard.
- * Правило діяло на папері, сайт віддавався.
+ * відкриті. Виняток один — `Google-Extended`.
  *
  * Тест виконує справжній продюсер і порівнює ПОВНИЙ серіалізований вивід із
- * зафіксованим «до». Різниця має бути рівно одна: додана група `ClaudeBot`.
- * Через це тест ловить не лише зникнення правки, а й будь-яку тиху зміну
- * сусідньої групи — саме те, чого не видно в діфі на один рядок.
+ * зафіксованим. Тому він ловить не лише зникнення правки, а й будь-яку тиху
+ * зміну сусідньої групи — саме те, чого не видно в діфі на один рядок.
+ *
+ * Історія змін, які цей знімок фіксує:
+ *
+ * - додано `ClaudeBot`: групу навчальних закривав лише `anthropic-ai`, токен,
+ *   якого в документації Anthropic уже немає, і правило діяло на папері;
+ * - `Applebot-Extended` перенесено з ботів для відповідей у навчальні: він не
+ *   краулер, а маркер згоди Apple на навчання моделей;
+ * - `Google-Extended` відкрито рішенням власника: продукт міряє присутність у
+ *   Gemini, і сайт, закритий для Gemini, суперечив би йому.
  */
 
 import { describe, expect, it } from "vitest";
@@ -24,54 +27,68 @@ type Rule = {
 };
 
 /**
- * Вивід до правки, зафіксований дослівно.
+ * Очікуваний вивід, зафіксований дослівно.
  *
- * Порядок тут значущий не для краулерів, а для доказу: нова група дописана
- * в кінець, тож усе, що стояло раніше, мусить лишитися на своєму місці й у
- * своєму вигляді.
+ * Порядок тут значущий не для краулерів, а для доказу: будь-яка перестановка
+ * чи зміна групи мусить бути свідомою й зʼявитися тут.
  */
 const PRIVATE = ["/app", "/admin", "/api", "/result", "/report"];
-const BEFORE: Rule[] = [
+const EXPECTED: Rule[] = [
   { userAgent: "*", allow: "/", disallow: PRIVATE },
   { userAgent: "OAI-SearchBot", allow: "/", disallow: PRIVATE },
   { userAgent: "PerplexityBot", allow: "/", disallow: PRIVATE },
-  { userAgent: "Applebot-Extended", allow: "/", disallow: PRIVATE },
-  { userAgent: "Google-Extended", disallow: "/" },
+  { userAgent: "Google-Extended", allow: "/", disallow: PRIVATE },
   { userAgent: "GPTBot", disallow: "/" },
   { userAgent: "CCBot", disallow: "/" },
   { userAgent: "anthropic-ai", disallow: "/" },
   { userAgent: "Bytespider", disallow: "/" },
+  { userAgent: "ClaudeBot", disallow: "/" },
+  { userAgent: "Applebot-Extended", disallow: "/" },
 ];
-
-const CLAUDE_BOT: Rule = { userAgent: "ClaudeBot", disallow: "/" };
 
 const produced = robots();
 const rules = produced.rules as Rule[];
+const ruleFor = (agent: string) => rules.find((r) => r.userAgent === agent);
 
-describe("вивід відрізняється від попереднього рівно однією групою", () => {
-  it("повний серіалізований вивід — це «до» плюс група ClaudeBot", () => {
-    expect(JSON.stringify(rules)).toBe(JSON.stringify([...BEFORE, CLAUDE_BOT]));
+describe("вивід збігається із зафіксованою політикою", () => {
+  it("повний серіалізований вивід", () => {
+    expect(JSON.stringify(rules)).toBe(JSON.stringify(EXPECTED));
   });
 
-  it("жодна з попередніх груп не змінилася", () => {
-    expect(rules.slice(0, BEFORE.length)).toEqual(BEFORE);
-  });
-
-  it("груп стало рівно на одну більше", () => {
-    expect(rules.length).toBe(BEFORE.length + 1);
+  it("кожен агент має рівно одну групу", () => {
+    const agents = rules.map((r) => r.userAgent);
+    expect(new Set(agents).size).toBe(agents.length);
   });
 });
 
-describe("ClaudeBot заборонено повністю", () => {
-  const rule = rules.find((r) => r.userAgent === "ClaudeBot");
+describe("навчальні краулери заборонені повністю", () => {
+  for (const agent of ["GPTBot", "CCBot", "anthropic-ai", "Bytespider", "ClaudeBot"]) {
+    it(`${agent}: заборона на весь сайт і жодного дозволу`, () => {
+      expect(ruleFor(agent)?.disallow).toBe("/");
+      expect(ruleFor(agent)?.allow).toBeUndefined();
+    });
+  }
 
-  it("група існує", () => {
-    expect(rule).toBeDefined();
+  it("застарілий токен anthropic-ai не прибрано — це окреме рішення власника", () => {
+    expect(ruleFor("anthropic-ai")).toBeDefined();
+  });
+});
+
+describe("Applebot-Extended — маркер навчання, а не бот для відповідей", () => {
+  it("заборонений повністю, як решта навчальних", () => {
+    expect(ruleFor("Applebot-Extended")?.disallow).toBe("/");
+    expect(ruleFor("Applebot-Extended")?.allow).toBeUndefined();
   });
 
-  it("заборона на весь сайт і жодного дозволу", () => {
-    expect(rule?.disallow).toBe("/");
-    expect(rule?.allow).toBeUndefined();
+  it("пошуковий Applebot не згаданий, тож його відкриває wildcard", () => {
+    expect(ruleFor("Applebot")).toBeUndefined();
+  });
+});
+
+describe("Google-Extended відкрито, приватні розділи — ні", () => {
+  it("дозволяє сайт і закриває ті самі приватні розділи, що й wildcard", () => {
+    expect(ruleFor("Google-Extended")?.allow).toBe("/");
+    expect(ruleFor("Google-Extended")?.disallow).toEqual(PRIVATE);
   });
 });
 
@@ -85,10 +102,16 @@ describe("пошук і запит людини лишилися відкрит�
     });
   }
 
+  for (const agent of ["OAI-SearchBot", "PerplexityBot"]) {
+    it(`${agent} відкрито з закритими приватними розділами`, () => {
+      expect(ruleFor(agent)?.allow).toBe("/");
+      expect(ruleFor(agent)?.disallow).toEqual(PRIVATE);
+    });
+  }
+
   it("wildcard і далі відкриває сайт, закриваючи приватні розділи", () => {
-    const wildcard = rules.find((r) => r.userAgent === "*");
-    expect(wildcard?.allow).toBe("/");
-    expect(wildcard?.disallow).toEqual(PRIVATE);
+    expect(ruleFor("*")?.allow).toBe("/");
+    expect(ruleFor("*")?.disallow).toEqual(PRIVATE);
   });
 });
 
@@ -96,9 +119,5 @@ describe("решта документа не зрушила", () => {
   it("мапа сайту й канонічний хост на місці", () => {
     expect(produced.sitemap).toBe("https://crawldy.ai/sitemap.xml");
     expect(produced.host).toBe("https://crawldy.ai");
-  });
-
-  it("застарілий токен не прибрано — це окреме рішення власника", () => {
-    expect(rules.some((r) => r.userAgent === "anthropic-ai")).toBe(true);
   });
 });
