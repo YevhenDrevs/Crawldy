@@ -465,12 +465,20 @@ class ImageOptimizationCheck(Check):
                 continue
             legacy = sum(page.images_by_format.get(f, 0) for f in ("jpg", "png", "gif"))
             modern = sum(page.images_by_format.get(f, 0) for f in ("webp", "avif"))
-            if legacy and modern == 0:
+            # `<img src>` у `<picture>` — фолбек, а не те, що поїде до
+            # відвідувача. Без цієї поправки знахідка спрацьовувала на
+            # сторінці, яка виконала її ж рекомендацію дослівно.
+            uncovered = legacy - page.images_with_modern_source
+            if uncovered > 0 and modern == 0:
                 yield self.issue(
                     key="legacy_format",
                     msg="perf.images.legacy_format",
-                    params={"count": legacy},
-                    evidence={"by_format": page.images_by_format},
+                    params={"count": uncovered},
+                    evidence={
+                        "by_format": page.images_by_format,
+                        "with_modern_source": page.images_with_modern_source,
+                        "without_modern_source": uncovered,
+                    },
                     severity=Severity.LOW,
                     page_url=page.url,
                 )

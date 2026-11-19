@@ -840,8 +840,8 @@ MESSAGES: dict[str, dict[str, str]] = {
             "training."
         ),
         "consequence": (
-            "The assistants people ask cannot open these pages, which may reduce your chances of "
-            "being shown as a source when someone asks about what you do."
+            "The assistants people ask cannot open the pages your site closes to them, which may "
+            "reduce your chances of being shown as a source when someone asks about what you do."
         ),
     },
     "llm.crawler_blocked.grounding": {
@@ -860,7 +860,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "separate them in robots.txt today."
         ),
         "consequence": (
-            "Content collected from these pages may not be used as a source when Gemini answers a "
+            "Content collected from your site may not be used as a source when Gemini answers a "
             "question. This says nothing about other assistants, and your position in ordinary "
             "Google results is unaffected."
         ),
@@ -877,9 +877,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "page."
         ),
         "consequence": (
-            "Your site forbids this agent, so when a visitor asks the assistant to look at your "
-            "page, it is not allowed to fetch it. What the assistant answers instead we do not "
-            "observe."
+            "Your site forbids the agents of {vendors}, so when a visitor asks the assistant "
+            "to look at your page, it is not allowed to fetch it. What the assistant answers "
+            "instead we do not observe."
         ),
     },
     "llm.crawler_blocked.training": {
@@ -895,7 +895,7 @@ MESSAGES: dict[str, dict[str, str]] = {
             "they control training access only."
         ),
         "consequence": (
-            "Your site asks these companies not to use its texts for model training. Whether they "
+            "Your site asks {vendors} not to use its texts for model training. Whether they "
             "honour that request is not something we check. This is a choice about your content, "
             "not a fault on the site."
         ),
@@ -1053,8 +1053,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Serve WebP/AVIF through <picture> with a fallback to the current format."
         ),
         "consequence": (
-            "The page loads more slowly than it could — most noticeably on a phone and on "
-            "a slow connection."
+            "The pictures on the page travel heavier than they need to. How much time that costs "
+            "depends on the files themselves — on a phone and a slow connection the weight is felt "
+            "first."
         ),
     },
     "perf.images.no_dimensions": {

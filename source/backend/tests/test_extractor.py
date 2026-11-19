@@ -412,3 +412,37 @@ def test_a_level_absent_everywhere_is_reported_without_an_order_claim():
     issues = _order_issues(_sequence("133"))
     assert len(issues) == 1
     assert issues[0].params == {"previous": 1, "level": 3}
+
+
+def test_picture_with_a_modern_source_is_not_a_legacy_image():
+    """`<img src>` у `<picture>` — фолбек, а не те, що поїде відвідувачу.
+
+    Розмітка взята з головної crawldy.ai: вона робить рівно те, що радить
+    знахідка про легший формат, а чек усе одно спрацьовував — бо
+    екстрактор дивився на фолбек.
+    """
+    page = page_from_html(
+        """
+        <picture>
+          <source type="image/webp" srcset="/brand/logo.webp">
+          <img src="/brand/logo.png" alt="Brand" width="160" height="32">
+        </picture>
+        <picture>
+          <source srcset="/hero.avif 2x">
+          <img src="/hero.jpg" alt="Hero" width="800" height="600">
+        </picture>
+        <img src="/plain.png" alt="Plain" width="10" height="10">
+        """
+    )
+    assert page.images_total == 3
+    # Розклад за `src` не міняється: він описує самі `<img>`.
+    assert page.images_by_format == {"png": 2, "jpg": 1}
+    # Сучасну альтернативу мають лише ті двоє, що лежать у `<picture>`.
+    assert page.images_with_modern_source == 2
+
+
+def test_modern_format_is_also_seen_in_the_img_own_srcset():
+    page = page_from_html(
+        '<img src="/a.png" srcset="/a.webp 1x, /a@2x.webp 2x" alt="A" width="1" height="1">'
+    )
+    assert page.images_with_modern_source == 1

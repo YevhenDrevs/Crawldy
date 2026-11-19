@@ -350,6 +350,13 @@ class AiCrawlerAccessCheck(Check):
             params={
                 "count": len(affected),
                 "crawlers": ", ".join(a.crawler.token for a in affected),
+                # Наслідок читають без заголовка й без доказу, тож назвати
+                # компанію мусить він сам: «ці компанії» вказує в порожнечу.
+                # Один вендор тримає кілька токенів одного призначення, а
+                # порядок довідника несе сенс — звідси dict.fromkeys.
+                "vendors": ", ".join(
+                    dict.fromkeys(a.crawler.vendor for a in affected)
+                ),
             },
             evidence={
                 "purpose": purpose.value,

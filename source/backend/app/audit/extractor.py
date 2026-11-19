@@ -419,10 +419,48 @@ def _chrome_links(tree: HTMLParser) -> set[Any]:
     return {node for area in ("nav", "footer") for node in tree.css(f"{area} a[href]")}
 
 
+# Формати, заради яких знахідка про «легший формат» узагалі існує.
+_MODERN_IMAGE_FORMATS = ("webp", "avif")
+
+
+def _offers_modern_format(node: Any, *, base: str) -> bool:
+    """Чи є в зображення сучасна альтернатива перед фолбеком.
+
+    `<picture>` віддає браузеру перше придатне `<source>`, а `<img src>`
+    там — лише запасний варіант для старих браузерів. Дивитися на
+    запасний означає бачити PNG там, де сторінка насправді віддає WebP.
+
+    `srcset` на самому `<img>` рахується з тієї ж причини: формат там
+    теж перекриває `src`.
+    """
+    candidates: list[str] = []
+    parent = node.parent
+    if parent is not None and parent.tag == "picture":
+        for source in parent.css("source"):
+            source_attrs = source.attributes
+            mime = (source_attrs.get("type") or "").strip().lower()
+            if mime in {f"image/{fmt}" for fmt in _MODERN_IMAGE_FORMATS}:
+                return True
+            candidates.append(source_attrs.get("srcset") or "")
+    candidates.append(node.attributes.get("srcset") or "")
+    for raw in candidates:
+        # «url 2x, url 800w» — беремо адресу кожного кандидата.
+        for candidate in raw.split(","):
+            url = candidate.strip().split(" ")[0]
+            if not url:
+                continue
+            if match := _IMG_EXT.search(urljoin(base, url)):
+                if match.group(1).lower() in _MODERN_IMAGE_FORMATS:
+                    return True
+    return False
+
+
 def _extract_images(tree: HTMLParser, s: PageSignals, *, base: str) -> None:
     for node in tree.css("img"):
         attrs = node.attributes
         s.images_total += 1
+        if _offers_modern_format(node, base=base):
+            s.images_with_modern_source += 1
         if "alt" not in attrs:  # alt="" — валідний варіант для декоративних зображень
             s.images_without_alt += 1
         if not (attrs.get("width") and attrs.get("height")):
