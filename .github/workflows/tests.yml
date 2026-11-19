@@ -1,0 +1,100 @@
+# Ворота перед злиттям.
+#
+# До 19 листопада 2026 їх не було взагалі: єдиною перевіркою бекенду була
+# людина, а єдиним гейтом фронту — збірка в Dockerfile. Ціна цього вже
+# відома. Правка, що підняла `DETECTOR_RULES`, поклала пʼять тестів
+# версій і поїхала в `main` без жодного сигналу — автор прогнав `ruff`
+# і не прогнав `pytest`.
+#
+# Команди тут — ті самі, що в розділі «Перед комітом» у `CLAUDE.md`.
+# Якщо вони розійдуться, розійдуться й дві правди про те, що таке
+# «готово».
+
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Новий пуш у ту саму гілку скасовує попередній прогін: черга з десяти
+# прогонів однієї гілки не каже нічого, чого не скаже останній.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: source/backend/pyproject.toml
+
+      - name: Залежності
+        run: pip install -e ".[dev]"
+
+      # Знімки вибірки лежать архівом; `tests/conftest.py` розпаковує їх
+      # сам, тож окремого кроку тут немає навмисно — інакше на машині
+      # розробника й у CI були б різні умови.
+
+      - name: ruff
+        run: ruff check app tests scripts
+
+      - name: mypy --strict
+        run: >
+          mypy --strict
+          app/audit app/core app/identity app/sites
+          app/billing app/scheduling app/enrich
+
+      # Без PostgreSQL `tests/integration` пропускаються — це задум:
+      # ядро аудиту тестується без БД і без мережі.
+      - name: pytest
+        run: pytest -q
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: source/frontend/package-lock.json
+
+      - name: Залежності
+        run: npm ci
+
+      - name: tsc
+        run: npx tsc --noEmit
+
+      - name: vitest
+        run: npx vitest run
+
+      # Збірка — єдині ворота, які тут були й до цього файла: вона робить
+      # перевірку типів і лінт Next, а `next.config.mjs` не містить
+      # жодного прапорця, що їх глушить.
+      - name: next build
+        run: npm run build
+        env:
+          # Значення потрібне самій збірці (вона його стверджує) і на
+          # результат перевірки не впливає: у CI ніхто нікуди не ходить.
+          NEXT_PUBLIC_API_URL: https://api.crawldy.ai
