@@ -255,7 +255,10 @@ async def resolve_session(db: AsyncSession, token: str) -> Session | None:
     row = (await db.execute(stmt)).one_or_none()
     if row is None:
         return None
-    record, user = row
+    # `Row` розпаковується в `Any`: типи колонок відомі із `select(...)`, але
+    # до розпакування не доходять, і `--strict` справедливо на це свариться.
+    record: Session = row[0]
+    user: User = row[1]
     if record.revoked_at is not None or record.expires_at <= _now():
         return None
     if user.deleted_at is not None or not user.status.can_sign_in:
