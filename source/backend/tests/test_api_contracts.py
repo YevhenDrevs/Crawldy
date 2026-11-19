@@ -950,10 +950,10 @@ def test_the_engine_surface_is_untouched_by_this_phase():
     assert len(CHECK_DECLARATIONS) == 80
     # Константи зберігаються рядками — порівнюємо тим типом, який у коді,
     # а не тим, яким число зручно писати в інструкції.
-    assert str(versions.DETECTOR_RULES) == "16"
+    assert str(versions.DETECTOR_RULES) == "17"
     assert str(versions.SCORING_RULES) == "6"
     assert str(versions.CRAWLER_VERSION) == "4"
-    assert versions.detector_version() == "38d5124ec140"
+    assert versions.detector_version() == "1a6741c06ecd"
     assert versions.scoring_version() == "9a40b1c27e44"
     rows = sorted(
         f"{c.code}:{c.module.value}:{c.severity.value}:{c.weight}:{c.effort.value}"

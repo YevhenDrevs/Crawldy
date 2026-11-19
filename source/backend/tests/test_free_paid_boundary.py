@@ -663,10 +663,10 @@ def test_no_engine_or_contract_version_is_bumped():
 
     assert len(REGISTRY) == 80
     assert len(CHECK_DECLARATIONS) == 80
-    assert str(versions.DETECTOR_RULES) == "16"
+    assert str(versions.DETECTOR_RULES) == "17"
     assert str(versions.SCORING_RULES) == "6"
     assert str(versions.CRAWLER_VERSION) == "4"
-    assert versions.detector_version() == "38d5124ec140"
+    assert versions.detector_version() == "1a6741c06ecd"
     assert versions.scoring_version() == "9a40b1c27e44"
     assert hashlib.sha256("\n".join(rows).encode()).hexdigest()[:16] == "73671c177c5c9934"
     assert RESULT_CONTRACT_VERSION == 2
