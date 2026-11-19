@@ -397,8 +397,8 @@ def test_version_transition_is_pinned_for_unique_content_qualification():
     """
     from app.audit import versions
 
-    assert versions.DETECTOR_RULES == "16"
-    assert versions.detector_version() == "38d5124ec140"
+    assert versions.DETECTOR_RULES == "17"
+    assert versions.detector_version() == "1a6741c06ecd"
 
     assert versions.CRAWLER_VERSION == "4"
     assert versions.SCORING_RULES == "6"

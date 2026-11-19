@@ -2315,7 +2315,7 @@ def test_g6_without_the_retired_marker_the_catalogue_has_an_orphan():
 def test_g6_the_version_boundary_moved_on_both_axes():
     from app.audit import versions
 
-    assert versions.DETECTOR_RULES == "16"
+    assert versions.DETECTOR_RULES == "17"
     assert versions.SCORING_RULES == "6"
     assert versions.CRAWLER_VERSION == "4"
     assert versions.detector_version() != "28aae132f233"

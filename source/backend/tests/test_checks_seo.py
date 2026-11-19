@@ -19,7 +19,7 @@ from app.audit.checks.seo import (
 )
 from app.audit.route_classes import RouteClass, classify_page, classify_route
 from app.audit.site_context import _parse_robots
-from app.audit.types import RobotsInfo
+from app.audit.types import PageSignals, RobotsInfo
 from tests.factories import context, page_from_html
 
 GOOD = """<html lang="uk"><head>
@@ -601,3 +601,48 @@ def test_passed_checks_eligibility_is_part_of_the_same_lever(monkeypatch):
     assert passed_module.eligible(evidence, "seo.robots_txt") is False
     _legacy(monkeypatch)
     assert passed_module.eligible(evidence, "seo.robots_txt") is True
+
+
+# ── контактна сторінка не зобовʼязана бути прозою ─────────────────────────
+
+
+def _page(url: str, words: int, title: str = "") -> PageSignals:
+    page = PageSignals(url=url, status_code=200, title=title)
+    page.word_count = words
+    page.text = "слово " * words
+    return page
+
+
+def test_a_contact_page_is_not_judged_on_word_count():
+    """Контакти — це телефон, адреса й форма, а не текст.
+
+    Виміряно на знімках вибірки 19 листопада 2026: `seo.thin_content` дав
+    13 знахідок, і ВІСІМ із них на контактних сторінках. Порада «доведіть
+    до 250 слів» означає там рівно «допишіть води».
+    """
+    from app.audit.checks.seo import ThinContentCheck
+    from tests.factories import context
+
+    ctx = context(_page("https://example.com/contact", 90, title="Contact us"))
+    assert ctx.type_of(ctx.pages[0]).value == "contact"
+    assert list(ThinContentCheck().run(ctx)) == []
+
+
+def test_an_ordinary_page_with_the_same_length_still_fires():
+    """Звільнення стосується типу сторінки, а не довжини як такої."""
+    from app.audit.checks.seo import ThinContentCheck
+    from tests.factories import context
+
+    ctx = context(_page("https://example.com/how-we-work", 90, title="How we work"))
+    assert ctx.type_of(ctx.pages[0]).value != "contact"
+    assert [i.code for i in ThinContentCheck().run(ctx)] == ["seo.thin_content"]
+
+
+def test_the_home_page_is_deliberately_not_exempt():
+    """Головна на 40 слів — справжня проблема, і виняток заховав би її."""
+    from app.audit.checks.seo import ThinContentCheck
+    from tests.factories import context
+
+    ctx = context(_page("https://example.com/", 40, title="Acme"))
+    assert ctx.type_of(ctx.pages[0]).value == "home"
+    assert [i.code for i in ThinContentCheck().run(ctx)] == ["seo.thin_content"]
