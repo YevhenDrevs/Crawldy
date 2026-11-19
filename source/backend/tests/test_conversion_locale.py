@@ -201,9 +201,9 @@ def test_version_transition_is_pinned_for_locale_independent_cro():
     """8. Літеральні значення переходу, не звірка величини з нею самою."""
     from app.audit import versions
 
-    assert versions.DETECTOR_RULES == "14"
-    assert versions.detector_version() == "3b9a556ab798"
+    assert versions.DETECTOR_RULES == "16"
+    assert versions.detector_version() == "38d5124ec140"
 
     assert versions.CRAWLER_VERSION == "4"
-    assert versions.SCORING_RULES == "5"
-    assert versions.scoring_version() == "aa4ecc62a5a3"
+    assert versions.SCORING_RULES == "6"
+    assert versions.scoring_version() == "9a40b1c27e44"

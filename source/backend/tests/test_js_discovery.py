@@ -481,7 +481,13 @@ def test_no_scoring_constant_moved():
     # й смуги — тож відбиток зсунуло саме покоління. Змінився набір
     # чеків: `ai.schema.faq` вилучено зі скорингу, і `ai_ready` зростає
     # рівно там, де він спрацьовував.
-    assert scoring_version() == "aa4ecc62a5a3"
+    # 9a40b1c27e44 — SCORING_RULES=6 (18 листопада 2026): і цього разу
+    # жодна константа формули не змінилась. Знахідка вийшла зі
+    # скорингу, лишившись у звіті: `llm.crawler_blocked:training`
+    # став `INFO`, тобто нулем, і `llm_visibility` зростає рівно на
+    # сайтах, які блокують збір для навчання й не блокують пошук,
+    # grounding чи користувацький доступ.
+    assert scoring_version() == "9a40b1c27e44"
 
 
 @pytest.mark.asyncio
