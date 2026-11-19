@@ -2315,8 +2315,8 @@ def test_g6_without_the_retired_marker_the_catalogue_has_an_orphan():
 def test_g6_the_version_boundary_moved_on_both_axes():
     from app.audit import versions
 
-    assert versions.DETECTOR_RULES == "14"
-    assert versions.SCORING_RULES == "5"
+    assert versions.DETECTOR_RULES == "16"
+    assert versions.SCORING_RULES == "6"
     assert versions.CRAWLER_VERSION == "4"
     assert versions.detector_version() != "28aae132f233"
     assert versions.scoring_version() != "c6a1c3fd43d8"
@@ -2342,6 +2342,13 @@ def test_g6_the_attribute_digest_moved_by_exactly_one_disappearing_row():
 
     assert len(live) == 80
     assert digest(live) != "e3b391e478f8c347"
-    assert digest([*live, accepted_faq_row]) == "e3b391e478f8c347", (
-        "прийнятий дайджест не відновлюється поверненням лише цього рядка"
+    # Відтоді зрушив ще один рядок: `llm.crawler_blocked` оголосив
+    # варіанти (18 листопада 2026). Щоб ворота й далі ДОВОДИЛИ, а не
+    # пришпилювали, повертаємо обидва рядки — і лише обидва.
+    before_variants = "llm.crawler_blocked:llm_visibility:high:4:low:"
+    rolled_back = [
+        before_variants if r.startswith("llm.crawler_blocked:") else r for r in live
+    ]
+    assert digest([*rolled_back, accepted_faq_row]) == "e3b391e478f8c347", (
+        "прийнятий дайджест не відновлюється поверненням лише цих рядків"
     )

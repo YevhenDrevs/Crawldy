@@ -398,8 +398,8 @@ def test_g6_the_scoring_fingerprint_moved_only_because_the_generation_moved():
     """
     from app.audit import versions
 
-    assert versions.SCORING_RULES == "5"
-    assert versions.scoring_version() == "aa4ecc62a5a3"
+    assert versions.SCORING_RULES == "6"
+    assert versions.scoring_version() == "9a40b1c27e44"
 
     original = versions.SCORING_RULES
     try:
@@ -407,9 +407,13 @@ def test_g6_the_scoring_fingerprint_moved_only_because_the_generation_moved():
         assert versions.scoring_version() == "c6a1c3fd43d8", (
             "з поколінням G5c відбиток не відновився — зрушила сама формула"
         )
+        versions.SCORING_RULES = "5"
+        assert versions.scoring_version() == "aa4ecc62a5a3", (
+            "з поколінням G6 відбиток не відновився — зрушила сама формула"
+        )
     finally:
         versions.SCORING_RULES = original
-    assert versions.scoring_version() == "aa4ecc62a5a3"
+    assert versions.scoring_version() == "9a40b1c27e44"
 
 
 def test_g6_removing_a_scored_check_changes_no_score_that_did_not_carry_it():
@@ -442,19 +446,31 @@ def test_g6_removing_a_scored_check_changes_no_score_that_did_not_carry_it():
 
 
 def test_g6_every_active_check_keeps_the_price_it_had():
-    """Жодна ціна, крім зниклої, не змінилась.
+    """Жодне оголошення, крім двох названих, не змінилось.
 
-    Доводиться тим самим дайджестом оголошень, що й у E-07: рядки живих
-    чеків плюс ПРИЙНЯТИЙ рядок вилученого дають прийнятий відбиток. Ваги,
-    серйозності, зусилля й варіанти всіх вісімдесяти чеків входять у цей
-    рядок, тож рівність нижче — твердження про кожен із них.
+    Доводиться дайджестом оголошень: рядки живих чеків, де рядок
+    `llm.crawler_blocked` повернуто до безваріантного вигляду, плюс
+    ПРИЙНЯТИЙ рядок вилученого `ai.schema.faq` дають прийнятий
+    відбиток E-07. Ваги, серйозності, зусилля й варіанти всіх
+    вісімдесяти чеків входять у рядок, тож рівність — твердження про
+    кожен із них.
+
+    Чого цей дайджест НЕ бачить: ціна `training` змінилась через
+    `severity` ОКРЕМОЇ знахідки, а не класу — у рядку стоїть `high`
+    і далі. Саме тому `DETECTOR_RULES` і `SCORING_RULES` піднято
+    рукою: автоматичний відбиток цю зміну пропустив би.
     """
     import hashlib
 
     from app.audit.checks import REGISTRY
 
+    before_variants = "llm.crawler_blocked:llm_visibility:high:4:low:"
     rows = sorted(f"{c.code}:{c.module.value}:{c.severity.value}:{c.weight}:"
                   f"{c.effort.value}:{','.join(c.variants)}" for c in REGISTRY)
     assert len(rows) == 80
-    restored = sorted([*rows, "ai.schema.faq:ai_ready:low:2:medium:"])
+    rolled_back = [
+        before_variants if r.startswith("llm.crawler_blocked:") else r for r in rows
+    ]
+    assert before_variants in rolled_back, "рядок чека не знайдено — доказ порожній"
+    restored = sorted([*rolled_back, "ai.schema.faq:ai_ready:low:2:medium:"])
     assert hashlib.sha256("\n".join(restored).encode()).hexdigest()[:16] == "e3b391e478f8c347"

@@ -391,5 +391,5 @@ def test_the_detector_generation_moved_so_the_two_sides_stay_comparable():
     assert outcome.versions["detector"] == versions.detector_version()
     # Покоління скорингу — 5 від G6 (E-07): чек вилучено зі скорингу, і
     # межа мусить бути видимою. Формула й ваги при цьому не рухались.
-    assert versions.SCORING_RULES == "5"
+    assert versions.SCORING_RULES == "6"
     assert outcome.versions["scoring"] == versions.scoring_version()

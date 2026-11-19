@@ -175,4 +175,7 @@ def test_the_rules_generation_marks_the_release_that_priced_a_check() -> None:
     assert scoring_version() != "0cfbc304bc32", "стара заморозка знята явно"
     assert scoring_version() != "7b16db310137", "межа 4 вересня видима у відбитку"
     assert scoring_version() != "c6a1c3fd43d8", "межа 13 вересня видима у відбитку"
-    assert SCORING_RULES == "5"
+    assert scoring_version() != "aa4ecc62a5a3", (
+        "межа 18 листопада видима у відбитку"
+    )
+    assert SCORING_RULES == "6"

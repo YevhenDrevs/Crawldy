@@ -950,18 +950,18 @@ def test_the_engine_surface_is_untouched_by_this_phase():
     assert len(CHECK_DECLARATIONS) == 80
     # Константи зберігаються рядками — порівнюємо тим типом, який у коді,
     # а не тим, яким число зручно писати в інструкції.
-    assert str(versions.DETECTOR_RULES) == "14"
-    assert str(versions.SCORING_RULES) == "5"
+    assert str(versions.DETECTOR_RULES) == "16"
+    assert str(versions.SCORING_RULES) == "6"
     assert str(versions.CRAWLER_VERSION) == "4"
-    assert versions.detector_version() == "3b9a556ab798"
-    assert versions.scoring_version() == "aa4ecc62a5a3"
+    assert versions.detector_version() == "38d5124ec140"
+    assert versions.scoring_version() == "9a40b1c27e44"
     rows = sorted(
         f"{c.code}:{c.module.value}:{c.severity.value}:{c.weight}:{c.effort.value}"
         f":{','.join(c.variants)}"
         for c in REGISTRY
     )
     digest = hashlib.sha256("\n".join(rows).encode()).hexdigest()[:16]
-    assert digest == "fa42a134eb827580"
+    assert digest == "73671c177c5c9934"
 
 
 def test_the_result_contract_version_did_not_move():
