@@ -634,3 +634,50 @@ def test_psi_still_reads_its_own_field_data_and_the_sidecar_does_not_invent_it()
     assert from_psi.field_data["INP"].value == 180
     assert from_sidecar.field_data == {}
     assert from_psi.accessibility_score == from_sidecar.accessibility_score == 90.0
+
+
+# ── застарілий формат: фолбек `<picture>` ним не є ─────────────────────────
+
+
+def _page_with_images(count: int, *, with_modern: int = 0) -> PageSignals:
+    page = PageSignals(url="https://example.com/", status_code=200)
+    page.images_total = count
+    page.images_by_format = {"png": count}
+    page.images_with_modern_source = with_modern
+    return page
+
+
+def test_legacy_format_fires_when_no_modern_alternative_is_offered():
+    from app.audit.checks.performance import ImageOptimizationCheck
+
+    site = SiteContext(entry_url="https://example.com/", origin="https://example.com")
+    site.pages = [_page_with_images(3)]
+    issues = [i for i in ImageOptimizationCheck().run(site) if i.msg == "perf.images.legacy_format"]
+    assert len(issues) == 1
+    assert issues[0].params["count"] == 3
+
+
+def test_picture_with_a_modern_source_silences_the_legacy_format_finding():
+    """Сторінка, що виконала рекомендацію, не має отримувати знахідку.
+
+    crawldy.ai: три логотипи в `<picture>` із WebP-джерелом, WebP на
+    сервері є — і знахідка спрацьовувала на кожній із десяти сторінок.
+    """
+    from app.audit.checks.performance import ImageOptimizationCheck
+
+    site = SiteContext(entry_url="https://example.com/", origin="https://example.com")
+    site.pages = [_page_with_images(3, with_modern=3)]
+    issues = [i for i in ImageOptimizationCheck().run(site) if i.msg == "perf.images.legacy_format"]
+    assert issues == []
+
+
+def test_only_the_images_without_a_modern_alternative_are_counted():
+    """Половинчаста розмітка лишається знахідкою — але рівно на свою частину."""
+    from app.audit.checks.performance import ImageOptimizationCheck
+
+    site = SiteContext(entry_url="https://example.com/", origin="https://example.com")
+    site.pages = [_page_with_images(5, with_modern=2)]
+    issues = [i for i in ImageOptimizationCheck().run(site) if i.msg == "perf.images.legacy_format"]
+    assert len(issues) == 1
+    assert issues[0].params["count"] == 3
+    assert issues[0].evidence["with_modern_source"] == 2

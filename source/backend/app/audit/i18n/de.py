@@ -870,8 +870,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "weiterhin ablehnen ist möglich."
         ),
         "consequence": (
-            "Die Assistenten, die Menschen fragen, können diese Seiten nicht öffnen — das kann "
-            "Ihre Chancen verringern, als Quelle genannt zu werden."
+            "Die Assistenten, die Menschen fragen, können die Seiten nicht öffnen, die Ihre "
+            "Website ihnen verschließt. Das kann Ihre Chancen verringern, als Quelle genannt zu "
+            "werden."
         ),
     },
     "llm.crawler_blocked.grounding": {
@@ -891,9 +892,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "in robots.txt lassen sie sich derzeit nicht trennen."
         ),
         "consequence": (
-            "Von diesen Seiten erfasste Inhalte werden möglicherweise nicht als Quelle "
-            "herangezogen, wenn Gemini eine Frage beantwortet. Über andere Assistenten sagt das "
-            "nichts aus, und Ihre Position in der normalen Google-Suche bleibt unberührt."
+            "Inhalte, die von Ihrer Website gesammelt wurden, dürfen möglicherweise nicht als "
+            "Quelle dienen, wenn Gemini eine Frage beantwortet. Über andere Assistenten sagt das "
+            "nichts, und Ihre Position in der normalen Google-Suche bleibt unberührt."
         ),
     },
     "llm.crawler_blocked.user": {
@@ -908,9 +909,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "lesen wollte."
         ),
         "consequence": (
-            "Ihre Website verbietet diesen Agenten. Bittet ein Besucher den Assistenten, Ihre "
-            "Seite anzusehen, darf dieser sie also nicht abrufen. Was der Assistent stattdessen "
-            "antwortet, beobachten wir nicht."
+            "Ihre Website verbietet die Agenten von {vendors}. Bittet ein Besucher den "
+            "Assistenten, Ihre Seite anzusehen, darf dieser sie also nicht abrufen. Was der "
+            "Assistent stattdessen antwortet, beobachten wir nicht."
         ),
     },
     "llm.crawler_blocked.training": {
@@ -926,9 +927,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "sie steuern ausschließlich den Trainingszugriff."
         ),
         "consequence": (
-            "Ihre Website bittet diese Unternehmen, ihre Texte nicht für das Modelltraining zu "
-            "verwenden. Ob sie sich daran halten, prüfen wir nicht. Das ist eine Entscheidung über "
-            "Ihre Inhalte, kein Mangel der Website."
+            "Ihre Website bittet {vendors}, ihre Texte nicht für das Modelltraining zu "
+            "verwenden. Ob sie sich daran halten, prüfen wir nicht. Das ist eine Entscheidung "
+            "über Ihre Inhalte, kein Mangel der Website."
         ),
     },
     "llm.client_rendered": {
@@ -1089,8 +1090,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "WebP/AVIF über <picture> ausliefern, mit Fallback auf das aktuelle Format."
         ),
         "consequence": (
-            "Die Seite lädt langsamer als nötig — am deutlichsten am Telefon und auf langsamer "
-            "Verbindung."
+            "Die Bilder der Seite werden schwerer ausgeliefert als nötig. Wie viel Zeit das "
+            "kostet, hängt von den Dateien selbst ab — auf dem Telefon und bei langsamer "
+            "Verbindung fällt das Gewicht zuerst auf."
         ),
     },
     "perf.images.no_dimensions": {

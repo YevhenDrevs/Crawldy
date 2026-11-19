@@ -337,6 +337,13 @@ class PageSignals:
     images_without_alt: int = 0
     images_without_dimensions: int = 0
     images_by_format: dict[str, int] = field(default_factory=dict)
+    # Скільки зображень мають сучасну альтернативу, яку браузер візьме
+    # РАНІШЕ за `src`: `<source>` у `<picture>` або кандидат у `srcset`.
+    # Окремо від `images_by_format` навмисно: той каже, на що вказує сам
+    # `<img>`, це — що насправді поїде до відвідувача. Старий знімок
+    # поля не має, і нуль там означає «не дивилися», що збігається з
+    # поведінкою до цієї правки.
+    images_with_modern_source: int = 0
     lazy_images: int = 0
 
     # Видимий слід «хлібних крихт» у розмітці: `nav[aria-label=breadcrumb]`,
