@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Глобальний ключ розробки. Він у публічному репозиторії, тож поза
@@ -126,6 +126,14 @@ class Settings(BaseSettings):
     # відхиляється з явною причиною, а секрети з оточення працюють як і
     # раніше: поява кабінету не робить установлення ненастроєним.
     secrets_key: str | None = None
+    # Коміт, з якого зібрано цей процес. Railway підставляє
+    # `RAILWAY_GIT_COMMIT_SHA` у кожне розгортання; `BUILD_COMMIT`
+    # лишає шлях будь-якому іншому хостингу. Порожньо — значить ми не
+    # знаємо, і `/health` скаже саме це, а не збреше.
+    build_commit: str = Field(
+        default="",
+        validation_alias=AliasChoices("BUILD_COMMIT", "RAILWAY_GIT_COMMIT_SHA"),
+    )
 
     # ── Paddle (перший платіжний провайдер) ──────────────────────────
     #

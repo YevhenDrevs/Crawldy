@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 
 from app.api.deps import SessionDep
+from app.application import build_info
 from app.core.config import settings
 from app.mail import transport as mail
 
@@ -10,7 +11,16 @@ router = APIRouter(tags=["system"])
 
 @router.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """Живий — і ЯКИЙ САМЕ живий.
+
+    Голе «ok» не відрізняє свіже розгортання від процесу, що місяць
+    виконує старий образ. Саме на цьому проєкт згаяв чотири дні:
+    автодеплой бекенду не спрацьовував, а ззовні це виглядало точно як
+    робочий деплой — бо сервіс і був робочий, просто не той.
+
+    Що означає кожне поле — в `app/application/build_info.py`.
+    """
+    return {"status": "ok", **build_info.describe()}
 
 
 @router.get("/health/ready")

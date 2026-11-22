@@ -1240,3 +1240,39 @@ class _PageRowForSpy:
         self.status_code = status_code
         self.depth = depth
         self.total = total
+
+
+# ── /health називає двигун, який справді виконується ──────────────────────
+
+
+def test_health_reports_the_engine_this_process_actually_runs():
+    """Голе «ok» не відрізняє свіже розгортання від старого образу.
+
+    Саме на цьому проєкт згаяв чотири дні: автодеплой бекенду не
+    спрацьовував, сервіс відповідав 200 на кожен запит, і ззовні це
+    виглядало як робочий деплой — бо сервіс і був робочий, просто не
+    той. Відбитки рахуються з КОДУ, тож вони відповідають на питання
+    «що тут виконується» навіть без змінної з комітом.
+    """
+    from fastapi.testclient import TestClient
+
+    # Без `import app.audit.checks`: `detector_version()` тягне реєстр сам,
+    # а такий імпорт звʼязав би локальне імʼя `app` із ПАКЕТОМ і перекрив
+    # застосунок FastAPI — `TypeError: 'module' object is not callable`.
+    from app.audit.versions import detector_version, scoring_version
+
+    body = TestClient(app).get("/health").json()
+
+    assert body["status"] == "ok"
+    # Рівність саме з обчисленими тут значеннями, а не з літералом:
+    # пришпилений рядок довів би лише, що хтось його переписав.
+    assert body["detector"] == detector_version()
+    assert body["scoring"] == scoring_version()
+    assert isinstance(body["commit"], str)
+
+
+def test_health_says_nothing_rather_than_guessing_the_commit():
+    """Змінної немає — порожньо. Вигаданий коміт гірший за відсутній."""
+    from fastapi.testclient import TestClient
+
+    assert TestClient(app).get("/health").json()["commit"] == ""
