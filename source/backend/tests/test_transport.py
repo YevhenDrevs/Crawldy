@@ -223,12 +223,21 @@ def test_an_old_snapshot_without_transport_fields_means_unknown():
     """20. Порожнє поле — «не знаємо», а не «HTTP/1.1» і не «без стиснення»."""
     import pathlib
 
-    old = next(pathlib.Path("benchmark/snapshots").glob("*.json"))
-    ctx = snapshot.load(json.loads(old.read_text(encoding="utf-8")))
-    analysis = transport.analyse(ctx)
-    assert analysis.known == 0 and analysis.unknown > 0
-    assert all(o.protocol is None for o in analysis.observations)
-    assert list(TransportCheck().run(ctx)) == []
+    # Не `next(glob)`: порядок теки на Linux не алфавітний, і в CI першим
+    # траплявся знімок заблокованого краулу (unilever, kendanielscpa) — без
+    # жодної прочитаної відповіді там «не знаємо» сказати нема про що.
+    # Судимо кожен знімок, де відповіді були.
+    olds = []
+    for path in sorted(pathlib.Path("benchmark/snapshots").glob("*.json")):
+        ctx = snapshot.load(json.loads(path.read_text(encoding="utf-8")))
+        if ctx.ok_pages:
+            olds.append((path.name, ctx))
+    assert olds
+    for name, ctx in olds:
+        analysis = transport.analyse(ctx)
+        assert analysis.known == 0 and analysis.unknown > 0, name
+        assert all(o.protocol is None for o in analysis.observations), name
+        assert list(TransportCheck().run(ctx)) == [], name
 
 
 def test_a_fresh_snapshot_round_trips_the_transport_facts():
