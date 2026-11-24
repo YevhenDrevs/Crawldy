@@ -6,9 +6,9 @@
  *
  * ## Що тут вирішено раз і назавжди
  *
- * - **Разова** — рівно 1 повна перевірка й 1 перевірка Actual AI
- *   Presence. Це означення формату, а не налаштування, тож форма їх не
- *   питає й не дає змінити.
+ * - **Разова** — рівно 1 повна перевірка. Таких пропозицій дві: сама
+ *   перевірка й перевірка разом з 1 Actual AI Presence. Склад обох
+ *   фіксований форматом, тож форма його не питає й не дає змінити.
  * - **Пакет** — дві незалежні кількості: перевірок і Presence. До
  *   6 вересня 2026 їх задавало одне число N; власник розвів їх, бо
  *   клієнт витрачає ці одиниці окремо, і пакет може містити, скажімо,
@@ -28,8 +28,43 @@
 import type { AdminOffer, AdminPlan } from "./contracts";
 
 export const SINGLE_CODE = "single";
+export const SINGLE_AUDIT_CODE = "single-audit";
 export const PACK_CODE = "pack";
 export const MONTHLY_CODE = "monthly";
+
+/**
+ * Разових пропозицій дві, і різняться вони рівно кількістю Presence.
+ *
+ * Сама перевірка коштує нам нуль, тож продається окремо й дешевше;
+ * варіант із Presence додає до неї вимірювання згадок бренду, за яке ми
+ * платимо провайдерам моделей (рішення власника 2026-11-24).
+ *
+ * Сторінка цін розводить їх за кількістю Presence, а не за кодом. Код —
+ * ідентифікатор запису каталогу, і вʼязати на нього подання означало б
+ * перейменовувати продукт разом із рядком бази. Та сама причина, через
+ * яку рекомендації аудиту групуються за `issue_key`, а не за ключем
+ * каталогу повідомлень.
+ */
+const SINGLE_KINDS = {
+  "single-audit": { code: SINGLE_AUDIT_CODE, presence: 0, sortOrder: 1 },
+  single: { code: SINGLE_CODE, presence: 1, sortOrder: 2 },
+} as const;
+
+/** Котра з двох разових. Пакет і тариф — окремі види, не різновиди. */
+export type SingleKind = keyof typeof SINGLE_KINDS;
+
+/**
+ * Як формат зветься для команди — і на картці адмінки, і в каталозі.
+ *
+ * Це внутрішня мітка: публічна сторінка цін має власні підписи шістьма
+ * мовами й `display_name` не показує взагалі. Одне джерело на обидва
+ * місця саме тому, що розійтися їм нема за чим.
+ */
+export const SINGLE_LABEL: Record<SingleKind | "pack", string> = {
+  "single-audit": "Разова перевірка",
+  single: "Разова перевірка з AI Presence",
+  pack: "Пакет перевірок",
+};
 
 /** Скільки знаків після коми має валюта. Невідома — два, як у бекенда. */
 export function currencyExponent(currency: string): number {
@@ -88,13 +123,16 @@ export function packUnitPreview(minor: number | null, count: number, currency: s
  * ціни, і повторювати його біля кожної означало б дозволити трьом
  * пропозиціям розійтися між собою (рішення власника 2026-09-05).
  */
-export function blankOffer(kind: "single" | "pack", provider: string): AdminOffer {
-  const single = kind === "single";
+export function blankOffer(kind: SingleKind | "pack", provider: string): AdminOffer {
+  // Вид покупки й вид пропозиції — різні речі: разових форматів два, а
+  // `offer_type` у каталозі лишається один, бо обидва продають рівно
+  // одну перевірку.
+  const shape = kind === "pack" ? null : SINGLE_KINDS[kind];
   return {
-    code: single ? SINGLE_CODE : PACK_CODE,
-    offer_type: kind,
+    code: shape ? shape.code : PACK_CODE,
+    offer_type: shape ? "single" : "pack",
     active: true,
-    display_name: single ? "Разова перевірка" : "Пакет перевірок",
+    display_name: SINGLE_LABEL[kind],
     description: "",
     provider,
     // Порожньо: справжнє посилання на прайс вводить адміністратор, і
@@ -103,10 +141,10 @@ export function blankOffer(kind: "single" | "pack", provider: string): AdminOffe
     currency: "USD",
     display_amount_minor: null,
     // Склад разової фіксований; у пакета кількість задає адміністратор.
-    audit_credits: single ? 1 : 10,
-    presence_credits: single ? 1 : 10,
-    promo_eligible: !single,
-    sort_order: single ? 1 : 2,
+    audit_credits: shape ? 1 : 10,
+    presence_credits: shape ? shape.presence : 10,
+    promo_eligible: shape === null,
+    sort_order: shape ? shape.sortOrder : 3,
     display_name_i18n: {},
     description_i18n: {},
   };
@@ -154,14 +192,21 @@ export function monthlyPrice(plan: AdminPlan): AdminPlan["prices"][number] | nul
   return plan.prices.find((price) => price.interval === "month") ?? plan.prices[0] ?? null;
 }
 
-/** Разова з формою: склад фіксований, змінюються лише гроші й посилання. */
-export function singlePayload(
+/**
+ * Разова з формою: склад фіксований, змінюються лише гроші й посилання.
+ *
+ * Обидва різновиди проходять тут одним тілом, бо відрізняються рівно
+ * кодом і кількістю Presence. Дві копії функції розійшлися б на першій
+ * же правці правила, яке стосується обох.
+ */
+function fixedSinglePayload(
   base: AdminOffer,
   form: { amountMinor: number | null; currency: string },
+  shape: { code: string; presence: number },
 ): AdminOffer {
   return {
     ...base,
-    code: SINGLE_CODE,
+    code: shape.code,
     offer_type: "single",
     // Формат оплати існує незалежно від того, чи заведено ціну, і
     // ховати його прапорцем нема з чого: сторінка цін показує всі
@@ -175,8 +220,24 @@ export function singlePayload(
     currency: form.currency.toUpperCase(),
     display_amount_minor: form.amountMinor,
     audit_credits: 1,
-    presence_credits: 1,
+    presence_credits: shape.presence,
   };
+}
+
+/** Разова перевірка разом з Actual AI Presence. */
+export function singlePayload(
+  base: AdminOffer,
+  form: { amountMinor: number | null; currency: string },
+): AdminOffer {
+  return fixedSinglePayload(base, form, SINGLE_KINDS.single);
+}
+
+/** Разова перевірка без Presence — та, що коштує нам нуль. */
+export function singleAuditPayload(
+  base: AdminOffer,
+  form: { amountMinor: number | null; currency: string },
+): AdminOffer {
+  return fixedSinglePayload(base, form, SINGLE_KINDS["single-audit"]);
 }
 
 /** Пакет із формою: дві кількості, незалежні одна від одної. */
