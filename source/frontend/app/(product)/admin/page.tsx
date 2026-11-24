@@ -13,9 +13,18 @@
  * Питає рівно комерційні значення: ціну, валюту, посилання на прайс
  * провайдера, кількість перевірок у пакеті, кількість Actual AI Presence
  * на місяць. Не питає складу пропозицій — він фіксований продуктом:
- * разова це завжди 1 перевірка + 1 Presence, пакет на N перевірок дає
- * N Presence, місячний план необмежений і місячний за означенням. Ціна
- * однієї перевірки в пакеті не вводиться, а обчислюється.
+ * разова це завжди 1 перевірка, і таких форматів два (сама перевірка та
+ * перевірка з 1 Presence); пакет продає дві кількості окремо; місячний
+ * план необмежений і місячний за означенням. Ціна однієї перевірки в
+ * пакеті не вводиться, а обчислюється.
+ *
+ * ## Чому разових карток дві
+ *
+ * Перевірка без Presence коштує нам нуль, тож продається окремо й
+ * дешевше (рішення власника 2026-11-24). Це два записи каталогу з
+ * різними цінами й різними прайсами у провайдера, тому й налаштовуються
+ * вони окремо. Форма в них однакова: різниця між форматами не
+ * комерційна, а складова, і складу форма не питає.
  *
  * ## Порожня ціна — легальний стан
  *
@@ -50,7 +59,10 @@ import { readCheckoutConfig } from "../../lib/guest-payment";
 import {
   MONTHLY_CODE,
   PACK_CODE,
+  SINGLE_AUDIT_CODE,
   SINGLE_CODE,
+  SINGLE_LABEL,
+  type SingleKind,
   blankOffer,
   blankPlan,
   fromAmountField,
@@ -60,10 +72,31 @@ import {
   packPayload,
   packProblem,
   packUnitPreview,
+  singleAuditPayload,
   singlePayload,
   toAmountField,
 } from "../../lib/admin-pricing";
 import type { AdminOffer, AdminPlan } from "../../lib/contracts";
+
+/**
+ * Що зберігає кожна з двох разових карток.
+ *
+ * Склад пропозиції живе в `admin-pricing.ts`, а екран лише називає, котру
+ * з двох він показує. Так знання про кількості лишається в одному місці
+ * — тому екран і не згадує жодної з них.
+ */
+const SINGLE_SAVERS: Record<SingleKind, SingleSaver> = {
+  "single-audit": singleAuditPayload,
+  single: singlePayload,
+};
+
+/**
+ * Приклад у полі показує ФОРМАТ суми, а не бажану ціну.
+ *
+ * Скільки коштує формат, вирішує власник, і підказка в полі такого
+ * рішення нести не має — інакше вона читається як порада.
+ */
+const AMOUNT_EXAMPLE = "19.00";
 
 const AMOUNT_ERROR: Record<string, string> = {
   not_a_number: "Ціна має бути числом, наприклад 19 або 19.90.",
@@ -114,6 +147,9 @@ export default function AdminPage() {
     );
   }
 
+  const singleAudit =
+    offers.find((offer) => offer.code === SINGLE_AUDIT_CODE)
+    ?? blankOffer("single-audit", provider);
   const single = offers.find((offer) => offer.code === SINGLE_CODE) ?? blankOffer("single", provider);
   const pack = offers.find((offer) => offer.code === PACK_CODE) ?? blankOffer("pack", provider);
   const monthly = plans.find((plan) => plan.code === MONTHLY_CODE) ?? blankPlan(provider);
@@ -122,7 +158,10 @@ export default function AdminPage() {
     <div className="flex flex-col gap-8">
       <h1 className="text-xl font-semibold tracking-tight text-primary">Ціни</h1>
 
-      <SingleCard offer={single} onSaved={load} />
+      {/* Порядок той самий, що бачить покупець на сторінці цін: спершу
+          дешевша перевірка, потім вона ж із Presence. */}
+      <SingleCard kind="single-audit" offer={singleAudit} onSaved={load} />
+      <SingleCard kind="single" offer={single} onSaved={load} />
       <PackCard offer={pack} onSaved={load} />
       <MonthlyCard plan={monthly} onSaved={load} />
     </div>
@@ -194,7 +233,21 @@ function useSaver(onSaved: () => Promise<void>) {
   return { busy, error, saved, setError, run };
 }
 
-function SingleCard({ offer, onSaved }: { offer: AdminOffer; onSaved: () => Promise<void> }) {
+type SingleSaver = (
+  base: AdminOffer,
+  form: { amountMinor: number | null; currency: string },
+) => AdminOffer;
+
+/** Одна картка на обидва разові формати: питає вона рівно гроші. */
+function SingleCard({
+  kind,
+  offer,
+  onSaved,
+}: {
+  kind: SingleKind;
+  offer: AdminOffer;
+  onSaved: () => Promise<void>;
+}) {
   const [currency, setCurrency] = useState(offer.currency);
   const [amount, setAmount] = useState(toAmountField(offer.display_amount_minor, offer.currency));
   const { busy, error, saved, setError, run } = useSaver(onSaved);
@@ -207,7 +260,7 @@ function SingleCard({ offer, onSaved }: { offer: AdminOffer; onSaved: () => Prom
     }
     void run(() =>
       saveAdminOffer(
-        singlePayload(offer, {
+        SINGLE_SAVERS[kind](offer, {
           amountMinor: parsed.minor,
           currency,
         }),
@@ -217,14 +270,18 @@ function SingleCard({ offer, onSaved }: { offer: AdminOffer; onSaved: () => Prom
 
   return (
     <CardShell
-      title="Разова перевірка"
+      title={SINGLE_LABEL[kind]}
       error={error}
       saved={saved}
       busy={busy}
       onSave={save}
     >
       <Field label="Ціна">
-        <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="19.00" />
+        <Input
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder={AMOUNT_EXAMPLE}
+        />
       </Field>
       <Field label="Валюта">
         <Input value={currency} onChange={(e) => setCurrency(e.target.value)} />

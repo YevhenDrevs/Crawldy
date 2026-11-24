@@ -279,6 +279,7 @@ async def upsert_commerce_offer(
             display_name=payload.display_name,
             display_name_i18n=payload.display_name_i18n,
             amount_minor=payload.display_amount_minor, currency=payload.currency,
+            presence_credits=payload.presence_credits,
         ),
         provider=provider, price_ref=price_ref, product_ref=product_ref,
     )

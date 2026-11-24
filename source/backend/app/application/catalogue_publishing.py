@@ -39,7 +39,24 @@ _KIND_WORDS = {"single": "single check", "pack": "check pack"}
 # показує взагалі (у неї власні підписи), тобто це внутрішня мітка.
 # Перекрити можна англійською назвою в каталозі — вона головніша за все.
 _OFFER_NAMES = {"single": "Crawldy Full Audit", "pack": "Crawldy Audit Pack"}
+_SINGLE_WITH_PRESENCE = "Crawldy Full Audit + AI Presence"
 _PLAN_NAMES = {"month": "Crawldy Monthly Plan", "year": "Crawldy Annual Plan"}
+
+
+def _standard_name(offer_type: str, presence_credits: int) -> str | None:
+    """Назва формату для каси й квитанції, або нічого для чужого виду.
+
+    Разових пропозицій дві, і продають вони різне: саму перевірку проти
+    перевірки з вимірюванням згадок бренду. `offer_type` у них один, бо
+    обидві видають рівно одну перевірку, тож вид тут не розрізняє — ціну
+    розрізняє склад.
+
+    Квитанція — комерційний документ: однакова назва на дві різні суми
+    зробила б нечитабельними і повернення коштів, і бухгалтерський рядок.
+    """
+    if offer_type == "single" and presence_credits > 0:
+        return _SINGLE_WITH_PRESENCE
+    return _OFFER_NAMES.get(offer_type)
 
 
 def _customer_name(default: str, i18n: dict[str, Any] | None, standard: str | None) -> str:
@@ -55,10 +72,18 @@ def offer_spec(
     display_name_i18n: dict[str, Any] | None,
     amount_minor: int,
     currency: str,
+    # Без значення за замовчуванням навмисно: склад вирішує, як покупка
+    # зветься в квитанції, і дефолт дозволив би місцю виклику мовчки
+    # продати один формат під назвою іншого.
+    presence_credits: int,
 ) -> PriceSpec:
     return PriceSpec(
         code=code,
-        name=_customer_name(display_name, display_name_i18n, _OFFER_NAMES.get(offer_type)),
+        name=_customer_name(
+            display_name,
+            display_name_i18n,
+            _standard_name(offer_type, presence_credits),
+        ),
         amount_minor=int(amount_minor),
         currency=currency.upper(),
         interval=None,
@@ -175,6 +200,7 @@ async def republish_catalogue(db: AsyncSession) -> list[dict[str, Any]]:
             code=offer.code, offer_type=offer.offer_type.value,
             display_name=offer.display_name, display_name_i18n=offer.display_name_i18n,
             amount_minor=offer.display_amount_minor, currency=offer.currency,
+            presence_credits=offer.presence_credits,
         )
         price_ref, product_ref = remembered(
             provider, refs=offer.provider_refs, row_provider=offer.provider,

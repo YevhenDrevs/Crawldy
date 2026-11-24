@@ -1,10 +1,11 @@
 /**
  * Службова сторінка цін: форма не вигадує складу пропозицій.
  *
- * Правила продукту (власник, 2026-09-05): разова — завжди 1 перевірка й
- * 1 Actual AI Presence; пакет — одне число N на обидві величини, без
- * окремої кількості Presence; місячний план — безліміт і місячний період
- * за означенням, окремо лише кількість Presence. Порожня ціна легальна.
+ * Правила продукту: разова — завжди 1 перевірка, і таких форматів два,
+ * сама перевірка й перевірка з 1 Actual AI Presence (власник,
+ * 2026-11-24); пакет — дві незалежні кількості (власник, 2026-09-06);
+ * місячний план — безліміт і місячний період за означенням, окремо лише
+ * кількість Presence. Порожня ціна легальна.
  */
 
 import { readFileSync } from "node:fs";
@@ -13,6 +14,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  SINGLE_AUDIT_CODE,
+  SINGLE_CODE,
+  SINGLE_LABEL,
   blankOffer,
   blankPlan,
   currencyExponent,
@@ -23,6 +27,7 @@ import {
   packPayload,
   packProblem,
   packUnitPreview,
+  singleAuditPayload,
   singlePayload,
   toAmountField,
 } from "./admin-pricing";
@@ -79,6 +84,72 @@ describe("разова: склад фіксований, форма його н�
     });
     expect(saved.display_amount_minor).toBeNull();
     expect(saved.audit_credits).toBe(1);
+  });
+});
+
+describe("разових форматів два, і різняться вони лише Presence", () => {
+  it("перевірка без Presence зберігається з нулем, а не з одиницею", () => {
+    const saved = singleAuditPayload(blankOffer("single-audit", "paddle"), {
+      amountMinor: 1000, currency: "USD",
+    });
+    expect(saved.presence_credits).toBe(0);
+    expect(saved.audit_credits).toBe(1);
+    expect(saved.offer_type).toBe("single");
+    expect(saved.code).toBe(SINGLE_AUDIT_CODE);
+  });
+
+  it("це два РІЗНІ записи каталогу, бо в них різні ціни й різні прайси", () => {
+    expect(SINGLE_AUDIT_CODE).not.toBe(SINGLE_CODE);
+    const audit = singleAuditPayload(blankOffer("single-audit", "paddle"), {
+      amountMinor: 1000, currency: "USD",
+    });
+    const withPresence = singlePayload(blankOffer("single", "paddle"), {
+      amountMinor: 2000, currency: "USD",
+    });
+    expect(audit.code).not.toBe(withPresence.code);
+    // Усе, крім коду й Presence, у них однакове: різниця не комерційна.
+    expect(audit.audit_credits).toBe(withPresence.audit_credits);
+    expect(audit.offer_type).toBe(withPresence.offer_type);
+    expect(audit.promo_eligible).toBe(withPresence.promo_eligible);
+  });
+
+  it("сторінка цін ставить дешевшу першою — каталог теж", () => {
+    expect(blankOffer("single-audit", "paddle").sort_order)
+      .toBeLessThan(blankOffer("single", "paddle").sort_order);
+    expect(blankOffer("single", "paddle").sort_order)
+      .toBeLessThan(blankOffer("pack", "paddle").sort_order);
+  });
+
+  it("форма не вигадує складу й тому, хто прийшов із чужими числами", () => {
+    // Запис, збережений до поділу форматів, несе 1 Presence. Збереження
+    // через картку «без Presence» мусить дати нуль, а не лишити старе.
+    const legacy = { ...blankOffer("single", "paddle"), presence_credits: 1 };
+    expect(singleAuditPayload(legacy, { amountMinor: 1000, currency: "USD" }).presence_credits)
+      .toBe(0);
+  });
+
+  it("обидва формати на екрані, і підпис у них один на двох із каталогом", () => {
+    const source = readFileSync(join(__dirname, "..", "(product)", "admin", "page.tsx"), "utf-8");
+    expect(source).toContain('blankOffer("single-audit", provider)');
+    expect(source).toContain('blankOffer("single", provider)');
+    expect(source).toContain('<SingleCard kind="single-audit"');
+    expect(source).toContain('<SingleCard kind="single"');
+    // Порядок карток той самий, що бачить покупець.
+    expect(source.indexOf('kind="single-audit"')).toBeLessThan(source.indexOf('kind="single"'));
+    // Підписи беруться з каталогу міток, а не пишуться в розмітці: два
+    // джерела однієї назви розійшлися б на першому ж перейменуванні.
+    expect(source).toContain("title={SINGLE_LABEL[kind]}");
+    expect(source).not.toContain('title="Разова перевірка"');
+    expect(SINGLE_LABEL["single-audit"]).not.toBe(SINGLE_LABEL.single);
+  });
+
+  it("приклад у полі ціни не прикидається рекомендованою ціною", () => {
+    const source = readFileSync(join(__dirname, "..", "(product)", "admin", "page.tsx"), "utf-8");
+    // Обидві разові картки показують той самий приклад формату. Різні
+    // числа в них читалися б як «от скільки це має коштувати».
+    expect(source).toContain("placeholder={AMOUNT_EXAMPLE}");
+    expect(source).not.toContain('placeholder="10.00"');
+    expect(source).not.toContain('placeholder="20.00"');
   });
 });
 

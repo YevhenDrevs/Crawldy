@@ -11,11 +11,17 @@
 лишається таким, яким було. Суми задаються в звичайних одиницях валюти
 (19.00), у базу лягають у мінімальних (1900).
 
-    python scripts/set_prices.py --single 19 --pack 149 --pack-count 10 \
-        --monthly 49 --monthly-presence 5
+    python scripts/set_prices.py --single-audit 9 --single 19 \
+        --pack 149 --pack-count 10 --monthly 49 --monthly-presence 5
 
     python scripts/set_prices.py --show      # що зараз у каталозі
     python scripts/set_prices.py --clear     # прибрати все, що додав скрипт
+
+Разових пропозицій дві. `--single-audit` це сама перевірка, `--single` —
+вона ж разом з однією перевіркою Actual AI Presence (власник,
+2026-11-24). Вони лежать окремими записами каталогу, бо несуть різні
+ціни й різні прайси у провайдера; сторінка цін розводить їх за кількістю
+Presence, а не за кодом.
 
 Пакет — це набір разових перевірок: `--pack-count N` задає і кількість
 повних перевірок, і кількість перевірок Actual AI Presence, бо це те саме
@@ -38,6 +44,7 @@ import os
 import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.stdout.reconfigure(encoding="utf-8")
@@ -55,6 +62,7 @@ from app.core.db import SessionLocal  # noqa: E402
 from app.services import commerce_service  # noqa: E402
 
 SINGLE_CODE = "single"
+SINGLE_AUDIT_CODE = "single-audit"
 PACK_CODE = "pack"
 PLAN_CODE = "monthly"
 
@@ -128,7 +136,9 @@ async def clear() -> None:
 
     async with SessionLocal() as db:
         await db.execute(
-            delete(CommercialOffer).where(CommercialOffer.code.in_([SINGLE_CODE, PACK_CODE]))
+            delete(CommercialOffer).where(
+                CommercialOffer.code.in_([SINGLE_AUDIT_CODE, SINGLE_CODE, PACK_CODE])
+            )
         )
         plan = (await db.execute(select(Plan).where(Plan.code == PLAN_CODE))).scalar_one_or_none()
         if plan is not None:
@@ -148,25 +158,56 @@ async def clear() -> None:
     await show()
 
 
+class Single(NamedTuple):
+    """Разова пропозиція, яку просять зберегти цим запуском."""
+
+    code: str
+    name: str
+    amount: str
+    presence: int
+    sort_order: int
+
+
+def _singles(args: argparse.Namespace) -> list[Single]:
+    """Котрі з двох разових задані аргументами. Без аргументу — не чіпаємо.
+
+    Порядок у каталозі той самий, що на сторінці цін: спершу дешевша
+    перевірка, потім вона ж із Presence.
+    """
+    chosen: list[Single] = []
+    if args.single_audit is not None:
+        chosen.append(Single(
+            code=SINGLE_AUDIT_CODE, name=args.single_audit_name,
+            amount=args.single_audit, presence=0, sort_order=1,
+        ))
+    if args.single is not None:
+        chosen.append(Single(
+            code=SINGLE_CODE, name=args.single_name,
+            amount=args.single, presence=1, sort_order=2,
+        ))
+    return chosen
+
+
 async def apply(args: argparse.Namespace) -> None:
     currency = args.currency.upper()
     async with SessionLocal() as db:
-        if args.single is not None:
-            amount = minor(args.single, currency)
+        for single in _singles(args):
+            amount = minor(single.amount, currency)
             provider, price_ref, product_ref = await publish(publishing.offer_spec(
-                code=SINGLE_CODE, offer_type="single", display_name=args.single_name,
+                code=single.code, offer_type="single", display_name=single.name,
                 display_name_i18n={}, amount_minor=amount, currency=currency,
+                presence_credits=single.presence,
             ))
-            await commerce_service.upsert_offer(db, code=SINGLE_CODE, values={
+            await commerce_service.upsert_offer(db, code=single.code, values={
                 "offer_type": "single", "active": True,
-                "display_name": args.single_name, "description": "",
+                "display_name": single.name, "description": "",
                 "provider": provider, "provider_price_ref": price_ref,
                 "provider_product_ref": product_ref,
                 "currency": currency, "display_amount_minor": amount,
-                # Склад разової фіксований продуктом: одна перевірка й одна
-                # перевірка Actual AI Presence.
-                "audit_credits": 1, "presence_credits": 1,
-                "promo_eligible": False, "sort_order": 1,
+                # Склад разової фіксований продуктом: рівно одна перевірка,
+                # а Presence до неї або входить, або ні.
+                "audit_credits": 1, "presence_credits": single.presence,
+                "promo_eligible": False, "sort_order": single.sort_order,
                 "display_name_i18n": {}, "description_i18n": {},
             })
         if args.pack is not None:
@@ -176,6 +217,7 @@ async def apply(args: argparse.Namespace) -> None:
             provider, price_ref, product_ref = await publish(publishing.offer_spec(
                 code=PACK_CODE, offer_type="pack", display_name=args.pack_name,
                 display_name_i18n={}, amount_minor=amount, currency=currency,
+                presence_credits=args.pack_count,
             ))
             await commerce_service.upsert_offer(db, code=PACK_CODE, values={
                 "offer_type": "pack", "active": True,
@@ -185,7 +227,7 @@ async def apply(args: argparse.Namespace) -> None:
                 "currency": currency, "display_amount_minor": amount,
                 # Одне число на обидві величини: пакет — це набір разових.
                 "audit_credits": args.pack_count, "presence_credits": args.pack_count,
-                "promo_eligible": True, "sort_order": 2,
+                "promo_eligible": True, "sort_order": 3,
                 "display_name_i18n": {}, "description_i18n": {},
             })
         if args.monthly is not None:
@@ -225,7 +267,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--single", help="ціна разової перевірки, напр. 19 або 19.00")
+    parser.add_argument("--single-audit",
+                        help="ціна разової перевірки без Presence, напр. 10 або 10.00")
+    parser.add_argument("--single",
+                        help="ціна разової перевірки з Presence, напр. 20 або 20.00")
     parser.add_argument("--pack", help="ціна пакета цілком, напр. 149")
     parser.add_argument("--pack-count", type=int,
                         help="скільки перевірок у пакеті (від 2); стільки ж Presence")
@@ -237,7 +282,8 @@ def main() -> None:
     parser.add_argument("--monthly-pages", type=int, default=50,
                         help="сторінок на аудит у місячному плані")
     parser.add_argument("--currency", default="USD")
-    parser.add_argument("--single-name", default="Разова перевірка")
+    parser.add_argument("--single-audit-name", default="Разова перевірка")
+    parser.add_argument("--single-name", default="Разова перевірка з AI Presence")
     parser.add_argument("--pack-name", default="Пакет перевірок")
     parser.add_argument("--monthly-name", default="Місячний план")
     parser.add_argument("--show", action="store_true", help="показати поточний каталог і вийти")
@@ -251,8 +297,14 @@ def main() -> None:
     if args.clear:
         asyncio.run(clear())
         return
-    if args.single is None and args.pack is None and args.monthly is None:
-        parser.error("нічого не задано: додайте --single, --pack (з --pack-count) або --monthly")
+    if (
+        args.single_audit is None and args.single is None
+        and args.pack is None and args.monthly is None
+    ):
+        parser.error(
+            "нічого не задано: додайте --single-audit, --single, "
+            "--pack (з --pack-count) або --monthly"
+        )
     asyncio.run(apply(args))
 
 

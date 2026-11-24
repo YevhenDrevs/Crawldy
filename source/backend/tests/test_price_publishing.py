@@ -293,23 +293,58 @@ def test_offer_spec_names_the_product_in_english_for_the_receipt() -> None:
     spec = publishing.offer_spec(
         code="pack", offer_type="pack", display_name="Пакет",
         display_name_i18n={"uk": "Пакет перевірок", "en": "Check pack"},
-        amount_minor=4999, currency="usd",
+        amount_minor=4999, currency="usd", presence_credits=10,
     )
     assert spec.name == "Check pack"
     assert spec.currency == "USD"
     assert spec.interval is None
     plain = publishing.offer_spec(
         code="pack", offer_type="pack", display_name="Пакет", display_name_i18n={},
-        amount_minor=4999, currency="USD",
+        amount_minor=4999, currency="USD", presence_credits=10,
     )
     assert plain.name == "Crawldy Audit Pack", (
         "внутрішня українська мітка не їде в чужу квитанцію"
     )
     odd = publishing.offer_spec(
         code="promo", offer_type="bundle", display_name="Набір", display_name_i18n={},
-        amount_minor=100, currency="USD",
+        amount_minor=100, currency="USD", presence_credits=0,
     )
     assert odd.name == "Набір", "для невідомого виду лишається те, що є"
+
+
+def test_the_two_single_offers_are_not_the_same_line_in_a_receipt() -> None:
+    """Разових дві, і квитанція мусить їх розрізняти.
+
+    Вид у них один (`single`), бо обидві видають рівно одну перевірку.
+    Різні вони складом, і саме склад визначає, що саме купили: сама
+    перевірка чи перевірка з вимірюванням згадок бренду. Однакова назва
+    на дві різні суми зробила б нечитабельними і повернення коштів, і
+    бухгалтерський рядок.
+    """
+    audit = publishing.offer_spec(
+        code="single-audit", offer_type="single", display_name="Разова перевірка",
+        display_name_i18n={}, amount_minor=1000, currency="USD", presence_credits=0,
+    )
+    with_presence = publishing.offer_spec(
+        code="single", offer_type="single",
+        display_name="Разова перевірка з AI Presence",
+        display_name_i18n={}, amount_minor=2000, currency="USD", presence_credits=1,
+    )
+    assert audit.name == "Crawldy Full Audit"
+    assert with_presence.name == "Crawldy Full Audit + AI Presence"
+    assert audit.name != with_presence.name
+    # Код розрізняє самі записи, бо прайс у провайдера в них окремий.
+    assert audit.code != with_presence.code
+
+
+def test_an_english_name_in_the_catalog_still_wins_over_the_standard_one() -> None:
+    """Склад обирає СТАНДАРТНУ назву, а не перекриває вибір людини."""
+    named = publishing.offer_spec(
+        code="single", offer_type="single", display_name="Разова",
+        display_name_i18n={"en": "Crawldy Audit + Brand Visibility"},
+        amount_minor=2000, currency="USD", presence_credits=1,
+    )
+    assert named.name == "Crawldy Audit + Brand Visibility"
 
 
 def test_plan_spec_carries_the_interval_in_code_and_cycle() -> None:
