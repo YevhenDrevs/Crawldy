@@ -200,7 +200,12 @@ function Buy({ locale }: { locale: Locale }) {
     waited.current = 0;
     closed.current = false;
     try {
-      const opened = await openOrder();
+      // Яку з двох разових купують, каже адреса. Без коду сервер віддає
+      // ту, що з присутністю: саме її ця сторінка продавала до появи
+      // дешевшої, і стара закладка не має мовчки купити інший продукт.
+      const offer =
+        new URLSearchParams(window.location.search).get("offer") ?? undefined;
+      const opened = await openOrder(offer);
       setPurchaseId(opened.purchase_id);
       const config = await readCheckoutConfig();
       const overlaid = await openPaddleOverlay({

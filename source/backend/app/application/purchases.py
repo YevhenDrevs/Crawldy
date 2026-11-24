@@ -174,23 +174,37 @@ async def open_pending(
 
 
 async def find_pending_for_audit(
-    db: AsyncSession, *, organization_id: uuid.UUID, audit_id: uuid.UUID, provider: str
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    audit_id: uuid.UUID,
+    provider: str,
+    offer_code: str | None = None,
 ) -> OneOffPurchase | None:
     """Незакрита каса на цей аудит, якщо вона вже відкрита.
 
     Захист від подвійного кліку й повтору запиту: друга спроба відкрити
     касу віддає ту саму покупку й те саме посилання. Глобальної
-    унікальності тут бути не може — купити той самий аудит удруге,
-    після повернення коштів, законно, і схема це підтримує.
+    унікальності тут бути не може, купити той самий аудит удруге, після
+    повернення коштів, законно, і схема це підтримує.
+
+    `offer_code` звужує пошук до тієї самої пропозиції, і це не
+    оптимізація, а виправлення справжньої дірки. Відколи на пейволі дві
+    кнопки з різними цінами, людина, яка натиснула дешевшу й передумала,
+    на дорожчій діставала б ТУ САМУ незакриту покупку: заплатила б
+    менше, а чекала б на більше. Різні пропозиції це різні покупки.
     """
+    conditions = [
+        OneOffPurchase.organization_id == organization_id,
+        OneOffPurchase.audit_id == audit_id,
+        OneOffPurchase.provider == provider,
+        OneOffPurchase.status == PurchaseStatus.PENDING,
+    ]
+    if offer_code is not None:
+        conditions.append(OneOffPurchase.offer_code == offer_code)
     row = await db.execute(
         select(OneOffPurchase)
-        .where(
-            OneOffPurchase.organization_id == organization_id,
-            OneOffPurchase.audit_id == audit_id,
-            OneOffPurchase.provider == provider,
-            OneOffPurchase.status == PurchaseStatus.PENDING,
-        )
+        .where(*conditions)
         .order_by(OneOffPurchase.created_at.desc())
         .limit(1)
     )
@@ -371,28 +385,41 @@ class OpenedCheckout:
     reused: bool
 
 
-async def single_offer(db: AsyncSession, *, provider: str) -> Any:
-    """Пропозиція «разова перевірка» каталогу для цієї каси.
+async def single_offer(db: AsyncSession, *, provider: str, code: str | None = None) -> Any:
+    """Разова пропозиція каталогу для цієї каси.
 
-    Це той самий продукт, що на сторінці цін, і ціна в нього одна —
+    Це той самий продукт, що на сторінці цін, і ціна в нього одна,
     задана в кабінеті й опублікована у провайдера. Окремого налаштування
     «прайс разової покупки» немає навмисно: два місця для однієї суми
     вже розходились (закладка показувала 9.99, каса брала 10.00).
 
-    Порожньо — недоналаштованість, а не «безкоштовно»: відкривати касу
-    без ціни означало б продавати за нуль.
+    Разових тепер дві, перевірка сайту окремо й перевірка разом із
+    Actual AI Presence. Окремого типу в них немає, бо різниця вже
+    записана числом присутності, і другий спосіб сказати те саме
+    розійшовся б із першим. `code` каже, яку просить сторінка.
+
+    Без коду береться та, у якої присутність є. Це не косметика: саме
+    цю адресу стара закладка вела на повний продукт, і мовчки продати
+    за нею дешевший означало б видати менше, ніж людина чекала. Решта
+    порядку лишилась на `sort_order`.
+
+    Порожньо означає недоналаштованість, а не «безкоштовно»: відкривати
+    касу без ціни означало б продавати за нуль.
     """
     from app.models.commerce import CommercialOffer, OfferType
 
+    query = select(CommercialOffer).where(
+        CommercialOffer.offer_type == OfferType.SINGLE,
+        CommercialOffer.active.is_(True),
+        CommercialOffer.archived_at.is_(None),
+        CommercialOffer.provider == provider,
+    )
+    if code is not None:
+        query = query.where(CommercialOffer.code == code)
     row = await db.execute(
-        select(CommercialOffer)
-        .where(
-            CommercialOffer.offer_type == OfferType.SINGLE,
-            CommercialOffer.active.is_(True),
-            CommercialOffer.archived_at.is_(None),
-            CommercialOffer.provider == provider,
+        query.order_by(
+            CommercialOffer.presence_credits.desc(), CommercialOffer.sort_order
         )
-        .order_by(CommercialOffer.sort_order)
     )
     offer = row.scalars().first()
     if offer is None or not offer.provider_price_ref:
@@ -429,7 +456,11 @@ def offer_terms(offer: Any) -> dict[str, object]:
 
 
 async def open_checkout(
-    db: AsyncSession, *, organization_id: uuid.UUID, audit_id: uuid.UUID
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    audit_id: uuid.UUID,
+    offer_code: str | None = None,
 ) -> OpenedCheckout:
     """Створити покупку й відкрити касу провайдера. У такому порядку.
 
@@ -446,9 +477,13 @@ async def open_checkout(
     не помилка даних: людина може спробувати ще раз.
     """
     provider_name = catalog.current_provider()
-    offer = await single_offer(db, provider=provider_name)
+    offer = await single_offer(db, provider=provider_name, code=offer_code)
     existing = await find_pending_for_audit(
-        db, organization_id=organization_id, audit_id=audit_id, provider=provider_name
+        db,
+        organization_id=organization_id,
+        audit_id=audit_id,
+        provider=provider_name,
+        offer_code=str(offer.code),
     )
     purchase = existing or await open_pending(
         db,

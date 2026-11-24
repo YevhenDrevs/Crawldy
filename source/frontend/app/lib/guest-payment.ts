@@ -210,10 +210,17 @@ async function describeGuestError(response: Response): Promise<string> {
  * Покупка створюється там і до каси; звідси не передається нічого,
  * крім номера аудиту, — і цього досить, бо все інше сервер знає сам.
  */
-export const openCheckout = (auditId: string) =>
-  guestRequest<CheckoutIntent>(`/v1/public/audits/${auditId}/checkout`, {
-    method: "POST",
-  });
+export const openCheckout = (auditId: string, offerCode?: string) =>
+  guestRequest<CheckoutIntent>(
+    `/v1/public/audits/${auditId}/checkout`,
+    offerCode
+      ? {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ offer_code: offerCode }),
+        }
+      : { method: "POST" },
+  );
 
 /**
  * Що сервер знає про гроші за цей аудит. Єдине джерело правди.

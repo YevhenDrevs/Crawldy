@@ -1,7 +1,10 @@
 /**
  * Ціни — en. Композиція повернута до стану `164a74d` (рішення власника
  * 2026-09-05): H1 → одне пояснювальне речення → чотири рівні блоки в ряд:
- * Безкоштовне превʼю, Разова, Пакет, Місячний план. Перебудова «смуга
+ * Разова, Разова з AI Presence,
+ * Пакет, Місячний план. Склад блоків змінено 2026-11-23: превʼю більше
+ * не картка сторінки цін, а присутність стала окремим форматом із
+ * власною ціною. Перебудова «смуга
  * превʼю + три картки» була пропозицією без затвердження і знята.
  *
  * Рядки — затверджений вміст блоків; числа — ціни, кількість перевірок,
@@ -18,21 +21,12 @@ import type { LocalizedPage } from "../../lib/page-types";
 function Body() {
   return (
     <>
-      <Hero title="How much does a website analysis cost?" compact lead="Every option gives you the same full report. You can pay for a single analysis, buy a pack at a lower price per site, or choose a monthly plan." />
+      <Hero title="How much does a website analysis cost?" compact lead="A single analysis gives you the full report on your site. The AI Presence option adds a check of whether AI assistants mention your brand. The pack and the monthly plan offer the same analyses at lower rates." />
 
       <Section tight>
         <PricingCards
           locale="en"
           strings={{
-            free: {
-              heading: "Free Preview",
-              bullets: [
-                "Overall website score",
-                "Analysis coverage",
-                "Three issues with the greatest impact",
-              ],
-              cta: "Check your site",
-            },
             single: {
               kind: "Single analysis",
               analyses: {
@@ -44,12 +38,19 @@ function Body() {
               pages: "Pages affected by each issue",
               order: "What to fix and in what order",
               download: "Downloadable full report",
-              presence: {
-                one: "Actual AI Presence: {n} check",
-                other: "Actual AI Presence: {n} checks",
-              },
               note: "No account needed",
               cta: "Get the report",
+            },
+            presence: {
+              kind: "Single analysis with AI Presence",
+              includesSingle: "Everything in the single analysis",
+              measures:
+                "Measured mentions of your brand in ChatGPT, Claude, Gemini and Perplexity",
+              questions:
+                "Model answers checked on the questions customers ask most",
+              download: "Separate AI Presence report to download",
+              note: "No account needed",
+              cta: "Get the report with AI Presence",
             },
             pack: {
               kind: "Analysis pack",
@@ -98,10 +99,10 @@ function Body() {
 
 export const en: LocalizedPage = {
   slug: "pricing",
-  title: "Crawldy pricing — one website analysis, three ways to pay",
+  title: "Crawldy pricing, single website analysis, pack and monthly plan",
   h1: "How much does a website analysis cost?",
   description:
-    "A one-time analysis, a pack that does not expire, or a monthly plan — each is the same full website analysis for search and AI, with Actual AI Presence included in the paid formats.",
+    "A single website analysis for search and AI, a separate option with Actual AI Presence, a pack that does not expire, and a monthly plan.",
   navLabel: "Pricing",
   Body,
 };

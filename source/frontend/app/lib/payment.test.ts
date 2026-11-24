@@ -122,15 +122,75 @@ describe("замовлення каси", () => {
     await openCheckout(AUDIT);
 
     const [, init] = fetchSpy.mock.calls[0];
-    // Тіла немає взагалі: покупку створює сервер, і все, що він має
-    // знати, стоїть в адресі. Дані з браузера тут стали б тим, що
-    // можна підробити.
+    // Без вибору формату тіла немає взагалі: покупку створює сервер, і
+    // все, що він має знати, стоїть в адресі. Дані з браузера тут стали
+    // б тим, що можна підробити.
     expect(init?.body).toBeUndefined();
+  });
+
+  it("вибраний формат їде кодом пропозиції, і нічим більше", async () => {
+    const fetchSpy = stubFetch(INTENT);
+    await openCheckout(AUDIT, "single-presence");
+
+    const [, init] = fetchSpy.mock.calls[0];
+    // Ціна в тілі не зʼявляється навіть тепер, коли формати два: сума
+    // живе в прайсі провайдера, а браузер називає лише ВИБІР.
+    expect(JSON.parse(String(init?.body))).toEqual({ offer_code: "single-presence" });
   });
 
   it("відмову провайдера показує причиною, а не порожнім екраном", async () => {
     stubFetch({ detail: { reason: "checkout.unavailable" } }, 503);
     await expect(openCheckout(AUDIT)).rejects.toThrow("checkout.unavailable");
+  });
+});
+
+// ── дві рівноцінні дії пейволу ─────────────────────────────────────────────
+
+describe("пейвол пропонує два формати, і обидва названі чесно", () => {
+  const PANEL = readFileSync(
+    join(__dirname, "..", "components", "PaymentPanel.tsx"),
+    "utf-8",
+  ).replace(/\r\n/g, "\n");
+
+  it("кожна кнопка несе СВІЙ код пропозиції", () => {
+    // Спільний виклик без коду означав би, що сервер вибирає формат
+    // сам, і дешевша кнопка мовчки купувала б дорожчий.
+    expect(PANEL).toContain("onBuy(site.code)");
+    expect(PANEL).toContain("onBuy(withPresence.code)");
+  });
+
+  it("дві дії показуються лише тоді, коли каталог назвав обидві", () => {
+    // Намальована наосліп друга кнопка обіцяла б ціну, якої ми не
+    // знаємо, і код пропозиції, якого в нас немає.
+    expect(PANEL).toContain("const bothKnown = site !== null && withPresence !== null");
+    expect(PANEL).toContain("{bothKnown ? (");
+  });
+
+  it("кнопки рівноцінні: однакова сітка, однаковий розмір", () => {
+    // Рішення власника 2026-11-23. Дрібніша друга дія читалась би як
+    // виняток для впертих, тоді як дешевший формат приносить не менше.
+    expect(PANEL).toContain('className="mt-5 grid gap-4 sm:grid-cols-2"');
+    expect((PANEL.match(/size="lg"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("суми беруться з каталогу, своїх не вигадується", () => {
+    expect(PANEL).toContain("offer.display_amount_minor === null");
+    expect(PANEL).toContain("money(offer.display_amount_minor");
+    // Жодного числа валюти в самому компоненті.
+    expect(PANEL).not.toMatch(/\$\s?\d|\d\s?(USD|EUR|UAH)/);
+  });
+
+  it("повтор відкриває той самий формат, а не інший", () => {
+    // Відмова провайдера на дешевшому форматі не має перетворюватись на
+    // дорожчу покупку з другої спроби.
+    expect(PANEL).toContain("chosen.current = offerCode");
+    expect(PANEL).toContain("const retry = () => void start(chosen.current)");
+    expect(PANEL).not.toContain("onRetry={start}");
+  });
+
+  it("другу дію пояснює рядок каталогу, а не текст у компоненті", () => {
+    expect(PANEL).toContain('t("free.ctaPresence")');
+    expect(PANEL).toContain('t("free.presenceAdds")');
   });
 });
 

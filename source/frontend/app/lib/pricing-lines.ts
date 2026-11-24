@@ -37,21 +37,39 @@ import { perAuditAmount, pluralize, type PluralForms } from "./pricing";
 
 /** Рядки віддає сторінка своєї мови: тексти живуть у вмісті, не тут. */
 export interface PricingStrings {
-  /** Безкоштовне превʼю: заголовок, перелік, одна дія. */
-  free: { heading: string; bullets: string[]; cta: string };
   single: {
     kind: string;
-    /** «{n} повна перевірка сайту» — рендериться з n = 1 завжди. */
+    /** «{n} повна перевірка сайту», рендериться з n = 1 завжди. */
     analyses: PluralForms;
     scores: string;
     issues: string;
     pages: string;
     order: string;
     download: string;
-    /** «Actual AI Presence: {n} перевірка» — рендериться з n = 1 завжди. */
-    presence: PluralForms;
     /** Дрібний підпис під переліком: «Без реєстрації». Умова доступу до
      *  формату, а не його складова, тому стоїть поза переліком. */
+    note?: string;
+    cta: string;
+  };
+  /**
+   * Разова перевірка разом із Actual AI Presence.
+   *
+   * Окремий блок, а не прапорець на `single`, бо це інша картка з іншою
+   * ціною й іншою кнопкою. Рядка з кількістю присутності тут немає
+   * навмисно: назва картки вже каже, що присутність входить, і число 1
+   * поруч лише повторювало б її.
+   */
+  presence: {
+    kind: string;
+    /** «Усе, що входить у разову перевірку». */
+    includesSingle: string;
+    /** Що саме міряє присутність. */
+    measures: string;
+    /** На чому міряє. */
+    questions: string;
+    /** Другий документ, окремо від звіту по сайту. */
+    download: string;
+    /** Дрібний підпис під переліком: «Без реєстрації», як і в разової. */
     note?: string;
     cta: string;
   };
@@ -133,9 +151,8 @@ export interface MonthlyPlan {
   prices: { amount_minor: number | null; exponent: number; currency: string }[];
 }
 
-/** Склад разової перевірки — фіксований, не конфігурація. */
+/** Склад разової перевірки фіксований, це не конфігурація. */
 export const SINGLE_ANALYSES = 1;
-export const SINGLE_PRESENCE = 1;
 
 export function money(amount: number, exponent: number, currency: string): string {
   return `${(amount / 10 ** exponent).toFixed(exponent)} ${currency}`;
@@ -148,7 +165,13 @@ export function priceText(offer: CatalogPrice | null, pending: string): string {
     : money(offer.display_amount_minor, offer.exponent, offer.currency);
 }
 
-/** Разова: сім рядків, жодного динамічного значення. */
+/**
+ * Разова перевірка сайту: шість рядків, жодного динамічного значення.
+ *
+ * Рядка про Actual AI Presence тут більше немає. Присутність продається
+ * окремою карткою за окрему ціну, і обіцяти її в дешевшому форматі
+ * означало б продавати те, чого в ньому немає.
+ */
 export function singleLines(locale: string, s: PricingStrings): string[] {
   return [
     pluralize(locale, SINGLE_ANALYSES, s.single.analyses),
@@ -157,7 +180,23 @@ export function singleLines(locale: string, s: PricingStrings): string[] {
     s.single.pages,
     s.single.order,
     s.single.download,
-    pluralize(locale, SINGLE_PRESENCE, s.single.presence),
+  ];
+}
+
+/**
+ * Разова разом із присутністю: те саме, що вище, плюс три рядки про неї.
+ *
+ * Перший рядок посилається на сусідню картку замість того, щоб повторити
+ * її шість пунктів. Так видно, що це та сама перевірка плюс присутність,
+ * а не два різні продукти, і однакові рядки не доводиться тримати
+ * узгодженими у двох місцях.
+ */
+export function presenceLines(s: PricingStrings): string[] {
+  return [
+    s.presence.includesSingle,
+    s.presence.measures,
+    s.presence.questions,
+    s.presence.download,
   ];
 }
 

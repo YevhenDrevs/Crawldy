@@ -135,31 +135,35 @@ export interface OrderState {
 }
 
 /**
- * Відкрити касу на разову перевірку. Аудиту ще немає — і не треба.
+ * Відкрити касу на разову перевірку. Аудиту ще немає, і не треба.
  *
  * Спроможність створюється тут же, якщо її не було: покупка мусить
  * комусь належати ще до того, як людина щось назве.
+ *
+ * `offerCode` каже, яку з двох разових купують, перевірку сайту чи
+ * перевірку разом із Actual AI Presence. Без нього сервер віддає ту,
+ * що з присутністю, бо саме її ця дорога продавала раніше.
  */
-export async function openOrder(): Promise<OpenedOrder> {
+export async function openOrder(offerCode?: string): Promise<OpenedOrder> {
   await ensureGuestSession();
+  const body = offerCode ? JSON.stringify({ offer_code: offerCode }) : undefined;
+  const init: RequestInit = body
+    ? { method: "POST", headers: { "content-type": "application/json" }, body }
+    : { method: "POST" };
   let opened: OpenedOrder;
   try {
-    opened = await orderRequest<OpenedOrder>("/v1/public/orders", {
-      method: "POST",
-    });
+    opened = await orderRequest<OpenedOrder>("/v1/public/orders", init);
   } catch (failure) {
-    // Мертва спроможність: токен у сховищі є, а сервер його не знає —
+    // Мертва спроможність: токен у сховищі є, а сервер його не знає,
     // сесія протухла (сім днів), базу перезалили, або запис лишився від
-    // іншого стенда. Це не відмова оплати: перед нами звичайний новий
+    // іншого стенда. Це не відмова оплати, перед нами звичайний новий
     // відвідувач, і саме ним його треба зробити. Без цього людина
-    // застрягала назавжди — кожне натискання «спробувати ще раз» било
+    // застрягала назавжди, кожне натискання «спробувати ще раз» било
     // в те саме 404, і кнопка виглядала зламаною.
     if (!(failure instanceof ApiError) || failure.status !== 404) throw failure;
     forgetOrder();
     await openGuestSession();
-    opened = await orderRequest<OpenedOrder>("/v1/public/orders", {
-      method: "POST",
-    });
+    opened = await orderRequest<OpenedOrder>("/v1/public/orders", init);
   }
   rememberOrder({ purchaseId: opened.purchase_id, token: readGuestToken() });
   return opened;
