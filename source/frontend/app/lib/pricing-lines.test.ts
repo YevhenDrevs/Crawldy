@@ -2,11 +2,16 @@
  * Рядки карток цін: склад видно завжди, числа — лише з конфігурації.
  *
  * Рішення власника 2026-09-05: відсутня роздрібна ціна не ховає, що
- * входить у пропозицію. Разова — завжди 1 + 1; пакет — одне число N і для
- * перевірок, і для Actual AI Presence, ціна за одну = загальна / N;
- * місячний план — безліміт і місячний період за означенням, окремо
- * налаштовується лише кількість Presence. Підписи без числа — затверджені
- * українські; мова без затвердженого підпису рядок пропускає, а не вигадує.
+ * входить у пропозицію. Пакет це одне число N і для перевірок, і для
+ * Actual AI Presence, ціна за одну дорівнює загальній поділеній на N.
+ * Місячний план це безліміт і місячний період за означенням, окремо
+ * налаштовується лише кількість Presence. Підписи без числа затверджені
+ * українські, мова без затвердженого підпису рядок пропускає, а не
+ * вигадує.
+ *
+ * Рішення власника 2026-11-23: разових дві. Перша це перевірка сайту,
+ * шість рядків і жодної присутності. Друга додає присутність і
+ * посилається на першу замість того, щоб повторити її склад.
  */
 
 import { readFileSync } from "node:fs";
@@ -16,12 +21,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   SINGLE_ANALYSES,
-  SINGLE_PRESENCE,
   monthlyLines,
   monthlyPriceText,
   packLines,
   packUnitNote,
   packUnitPrice,
+  presenceLines,
   priceText,
   singleLines,
   type PricingStrings,
@@ -29,7 +34,6 @@ import {
 
 /** Український вміст сторінки — канонічні рядки власника. */
 const UK: PricingStrings = {
-  free: { heading: "Безкоштовне прев’ю", bullets: ["Загальний бал сайту"], cta: "Перевірити сайт" },
   single: {
     kind: "Разова перевірка",
     analyses: { one: "{n} повна перевірка сайту", few: "{n} повні перевірки сайтів", many: "{n} повних перевірок сайтів", other: "{n} повної перевірки сайтів" },
@@ -38,8 +42,16 @@ const UK: PricingStrings = {
     pages: "Сторінки, яких стосується кожна проблема",
     order: "Пріоритети та порядок виправлення",
     download: "Повний звіт для завантаження",
-    presence: { one: "Actual AI Presence: {n} перевірка", few: "Actual AI Presence: {n} перевірки", many: "Actual AI Presence: {n} перевірок", other: "Actual AI Presence: {n} перевірки" },
     cta: "Отримати звіт",
+  },
+  presence: {
+    kind: "Разова перевірка з AI Presence",
+    includesSingle: "Усе, що входить у разову перевірку",
+    measures: "Вимірювання згадок вашого бренду в ChatGPT, Claude, Gemini і Perplexity",
+    questions: "Перевірка відповідей моделей на часті запитання клієнтів",
+    download: "Окремий звіт про присутність для завантаження",
+    note: "Без реєстрації",
+    cta: "Отримати звіт з AI Presence",
   },
   pack: {
     kind: "Пакет перевірок",
@@ -71,7 +83,8 @@ const UK: PricingStrings = {
 /** Англійська — без затверджених підписів для рядків без числа (крім назви продукту). */
 const EN: PricingStrings = {
   ...UK,
-  single: { ...UK.single, analyses: { one: "{n} full website analysis", other: "{n} full website analyses" }, presence: { one: "Actual AI Presence: {n} check", other: "Actual AI Presence: {n} checks" } },
+  single: { ...UK.single, analyses: { one: "{n} full website analysis", other: "{n} full website analyses" } },
+  presence: { ...UK.presence, kind: "Single analysis with AI Presence", includesSingle: "Everything in the single analysis" },
   pack: {
     kind: "Analysis pack",
     analyses: { one: "{n} full website analysis", other: "{n} full website analyses" },
@@ -98,8 +111,8 @@ const PACK_10 = {
   audit_credits: 10, presence_credits: 10,
 };
 
-describe("Разова: склад фіксований 1 + 1, динамічні лише ціна й валюта", () => {
-  it("сім рядків без жодної пропозиції в каталозі", () => {
+describe("Разова: склад фіксований, динамічні лише ціна й валюта", () => {
+  it("шість рядків без жодної пропозиції в каталозі", () => {
     const lines = singleLines("uk", UK);
     expect(lines).toEqual([
       "1 повна перевірка сайту",
@@ -108,16 +121,51 @@ describe("Разова: склад фіксований 1 + 1, динамічн�
       "Сторінки, яких стосується кожна проблема",
       "Пріоритети та порядок виправлення",
       "Повний звіт для завантаження",
-      "Actual AI Presence: 1 перевірка",
     ]);
     expect(SINGLE_ANALYSES).toBe(1);
-    expect(SINGLE_PRESENCE).toBe(1);
+  });
+
+  it("дешевша разова не обіцяє присутності в жодній мові", () => {
+    // Присутність коштує грошей за кожен прогін, і обіцяти її там, де
+    // за неї не заплачено, означало б продати те, чого в форматі немає.
+    for (const [name, strings] of [["uk", UK], ["en", EN]] as const) {
+      for (const line of singleLines(name, strings)) {
+        expect(line.toLowerCase(), name).not.toContain("presence");
+      }
+    }
   });
 
   it("англійська форма однини — та сама фіксована одиниця", () => {
     const lines = singleLines("en", EN);
     expect(lines[0]).toBe("1 full website analysis");
-    expect(lines[6]).toBe("Actual AI Presence: 1 check");
+    expect(lines).toHaveLength(6);
+  });
+});
+
+describe("Разова з присутністю: посилання на сусідню картку плюс три рядки", () => {
+  it("чотири рядки, перший відсилає до разової", () => {
+    expect(presenceLines(UK)).toEqual([
+      "Усе, що входить у разову перевірку",
+      "Вимірювання згадок вашого бренду в ChatGPT, Claude, Gemini і Perplexity",
+      "Перевірка відповідей моделей на часті запитання клієнтів",
+      "Окремий звіт про присутність для завантаження",
+    ]);
+  });
+
+  it("склад разової не повторюється рядок у рядок", () => {
+    // Два місця з тим самим переліком розійшлися б: виправили б одне,
+    // забули друге. Тому тут посилання, а не копія.
+    const single = new Set(singleLines("uk", UK));
+    for (const line of presenceLines(UK).slice(1)) {
+      expect(single.has(line)).toBe(false);
+    }
+  });
+
+  it("чотири головні асистенти названі поіменно", () => {
+    const text = presenceLines(UK).join(" ");
+    for (const vendor of ["ChatGPT", "Claude", "Gemini", "Perplexity"]) {
+      expect(text, vendor).toContain(vendor);
+    }
   });
 
   it("без ціни головна ціна — «ціна за запитом», склад не змінюється", () => {

@@ -187,6 +187,7 @@ describe("сторінка цін", () => {
       "Single analysis",
       "Analysis pack",
       "For regular use",
+      "Everything in the single analysis",
     ];
     for (const { name, text } of contentFiles()) {
       if (!name.startsWith("pricing/")) continue;
@@ -197,10 +198,12 @@ describe("сторінка цін", () => {
       // Кожна мова несе ВЛАСНІ рядки живого блока, включно з формами
       // множини: «1 перевірок» очима клієнта — неохайність.
       for (const key of [
-        "free: {",
         "single: {",
+        "presence: {",
         "pack: {",
         "monthly: {",
+        "measures:",
+        "questions:",
         "badge:",
         "unlimited:",
         "noExpiry:",
@@ -273,11 +276,17 @@ describe("сторінка цін", () => {
     expect(cards.includes("sm:grid-cols-2")).toBe(true);
     expect(cards.includes('aria-labelledby="pricing-free"')).toBe(false);
     expect(cards.includes("md:grid-cols-3")).toBe(false);
-    // Превʼю — анонімний шлях: перевірка свого сайту без входу.
-    expect(cards.includes("cta={{ href: resultHref, label: strings.free.cta }}")).toBe(true);
-    // Разова теж анонімна (рішення власника 2026-09-06): спершу оплата,
-    // сайт питаємо після неї, на `/buy`, і реєстрації немає ніде.
-    expect(cards.includes("cta={{ href: buyHref, label: strings.single.cta }}")).toBe(true);
+    // Картки безкоштовного превʼю на сторінці цін більше немає (власник,
+    // 2026-11-23). Саме превʼю лишається, і головна дія шапки веде на
+    // нього з кожної сторінки, тож дорога не зникла, зникла картка.
+    expect(cards.includes("strings.free")).toBe(false);
+    expect(cards.includes("resultHref")).toBe(false);
+    // Обидві разові анонімні (рішення власника 2026-09-06): спершу
+    // оплата, сайт питаємо після неї, на `/buy`, і реєстрації немає.
+    expect(cards.includes("cta={{ href: buyHref(single), label: strings.single.cta }}")).toBe(true);
+    expect(
+      cards.includes("cta={{ href: buyHref(withPresence), label: strings.presence.cta }}"),
+    ).toBe(true);
     expect(cards.includes("/login?lang=${locale}&next=")).toBe(true);
     // Pack і Monthly — просто в касу. Вхід, якщо він потрібен, влаштовує
     // сама сторінка оплати; кабінету на шляху до неї немає (рішення
@@ -290,10 +299,17 @@ describe("сторінка цін", () => {
     // Мова їде в ОБИДВА запити.
     expect(cards.includes("/v1/offers?lang=${locale}")).toBe(true);
     expect(cards.includes("/v1/plans?lang=${locale}")).toBe(true);
-    // Пакет і Місячний план — усе, що входить у разову перевірку:
-    // різниця в кількості й ціні, а не у функціях. Рядки будує чиста
-    // логіка `lib/pricing-lines.ts`.
+    // Пакет і Місячний план це все, що входить у разову перевірку.
+    // Різниця між НИМИ в кількості й ціні, а не у функціях, і таблиці
+    // можливостей на сторінці немає досі.
+    //
+    // Присутність окремим форматом цього не скасовує. Вона не рівень і
+    // не набір функцій, а друга робота з власною собівартістю: кожен
+    // прогін коштує грошей за запити до чотирьох моделей, тоді як
+    // перевірка сайту не коштує майже нічого. Тому формати два, і
+    // другий посилається на перший замість того, щоб його повторювати.
     const lines = readFileSync(join(APP, "lib", "pricing-lines.ts"), "utf-8");
+    expect(lines.includes("s.presence.includesSingle")).toBe(true);
     expect(lines.includes("s.pack.includesSingle")).toBe(true);
     expect(lines.includes("s.monthly.includesSingle")).toBe(true);
     expect(cards.includes("features")).toBe(false);
@@ -347,22 +363,39 @@ describe("сторінка цін", () => {
     expect(rendered.includes("display_name")).toBe(false);
   });
 
-  it("картка превʼю: погоджений заголовок і перелік, без ціни й обіцянок", () => {
+  it("картка разової з AI Presence: погоджена назва в кожній мові", () => {
+    // Вона стоїть на місці знятої картки превʼю (власник, 2026-11-23) і
+    // перевіряється так само: назва затверджена, вигаданих цін у файлі
+    // немає.
     const expected: Record<string, string> = {
-      en: "Free Preview",
-      uk: "Безкоштовне прев’ю",
-      de: "Kostenlose Vorschau",
-      es: "Vista previa gratuita",
-      fr: "Aperçu gratuit",
-      ru: "Бесплатный предварительный результат",
+      en: "Single analysis with AI Presence",
+      uk: "Разова перевірка з AI Presence",
+      de: "Einzelanalyse mit AI Presence",
+      es: "Análisis individual con AI Presence",
+      fr: "Analyse unique avec AI Presence",
+      ru: "Разовая проверка с AI Presence",
     };
-    for (const [locale, heading] of Object.entries(expected)) {
+    for (const [locale, kind] of Object.entries(expected)) {
       const text = readFileSync(join(CONTENT, "pricing", `${locale}.tsx`), "utf-8");
-      expect(text.includes(`heading: ${JSON.stringify(heading)}`), `${locale}: заголовок`).toBe(true);
-      // Ціни у превʼю немає — ані «Безкоштовно», ані нуля: воно безкоштовне
-      // за означенням, і окремий рядок ціни лише повторював би заголовок.
-      expect(/price:\s*"/.test(text), `${locale}: ціна у превʼю`).toBe(false);
+      expect(text.includes(`kind: ${JSON.stringify(kind)}`), `${locale}: назва`).toBe(true);
+      expect(/price:\s*"/.test(text), `${locale}: вписана ціна`).toBe(false);
       expect(/kindFree/.test(text), `${locale}: старий підпис`).toBe(false);
+      // Заголовка знятої картки не лишилось ніде.
+      expect(/heading:/.test(text), `${locale}: картка превʼю`).toBe(false);
+    }
+  });
+
+  it("присутність названа лише там, де за неї платять", () => {
+    // Рядок про Actual AI Presence стояв у разовій, поки вона була одна.
+    // Тепер дешевша разова присутності не обіцяє, і це межа, яку легко
+    // стерти назад копіюванням старого блока.
+    for (const locale of ["en", "uk", "de", "es", "fr", "ru"]) {
+      const text = readFileSync(join(CONTENT, "pricing", `${locale}.tsx`), "utf-8");
+      const single = text.indexOf("single: {");
+      const presence = text.indexOf("presence: {", single);
+      expect(single, `${locale}: блок разової`).toBeGreaterThan(-1);
+      expect(presence, `${locale}: блок присутності`).toBeGreaterThan(single);
+      expect(text.slice(single, presence), `${locale}`).not.toContain("Presence");
     }
   });
 

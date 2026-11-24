@@ -8,20 +8,36 @@
  * закрите вікно. Розділяти їх на кілька панелей означало б розводити
  * по файлах один стан однієї кнопки.
  *
- * ## Чого тут немає
+ * ## Дві дії, рівноцінні
  *
- * Ціни — вона живе в прайсі провайдера, і назвати її тут означало б
- * мати друге джерело правди про гроші.
+ * Під безкоштовним результатом тепер два платні вибори: перевірка сайту
+ * й вона ж разом із Actual AI Presence. Рівноцінні навмисно. Дешевший
+ * формат не коштує нам майже нічого, тоді як присутність платить за
+ * запити до чотирьох моделей за кожен прогін, тож людина, яка вибрала
+ * дешевше, приносить не менше. Ховати цей вибір дрібним посиланням
+ * означало б ховати його без причини.
+ *
+ * ## Про ціни
+ *
+ * Вписаної ціни тут немає досі: числа приходять із каталогу тим самим
+ * запитом, що й на сторінці цін. Дві кнопки без сум читались би як
+ * загадка, тому суму показуємо, але своєї не вигадуємо. Каталог не
+ * відповів — лишається одна кнопка без ціни, рівно як було.
+ *
+ * ## Чого тут немає
  *
  * Права. `unlocked` приходить із сервера й нікуди звідси не
  * встановлюється: цей компонент уміє показати стан і не вміє його
  * призначити.
  */
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Button, Panel, Spinner } from "./primitives";
+import { API_URL } from "../lib/api";
+import { money } from "../lib/pricing-lines";
+import { singleOffers } from "../lib/pricing";
 import {
   isSettled,
   nextPollDelayMs,
@@ -51,18 +67,54 @@ interface Props {
   onUnlocked?: () => void;
 }
 
+/** Поля пропозиції, потрібні двом кнопкам пейволу. */
+interface PaywallOffer {
+  code: string;
+  offer_type: string;
+  presence_credits: number;
+  display_amount_minor: number | null;
+  exponent: number;
+  currency: string;
+}
+
 export function PaymentPanel({ auditId, initial, onUnlocked }: Props) {
   const [flow, dispatch] = useReducer(reduceFlow, initial ?? INITIAL_FLOW);
+  const [offers, setOffers] = useState<PaywallOffer[]>([]);
   const unlockedRef = useRef(false);
+  const { locale } = useLocale();
+  // Який формат обрали минулого разу. Потрібен для «спробувати ще раз»:
+  // повтор мусить відкрити ту саму покупку, а не тихо іншу.
+  const chosen = useRef<string | undefined>(undefined);
 
-  const start = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_URL}/v1/offers?lang=${locale}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const body = (await response.json()) as PaywallOffer[];
+        if (!cancelled) setOffers(body);
+      } catch {
+        // Каталог не відповів. Лишається одна кнопка без ціни, тобто
+        // рівно те, що було тут до появи другого формату.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  const start = useCallback(async (offerCode?: string) => {
+    chosen.current = offerCode;
     dispatch({ type: "checkout.requested" });
     try {
       // Запамʼятати ДО каси: якщо накладну відкрити не вдасться, ми
       // підемо за адресою провайдера, і сторінка оплати мусить знати,
       // куди повернути людину — в адресі `?_ptxn=` аудиту немає.
       rememberAudit(auditId);
-      const intent = await openCheckout(auditId);
+      const intent = await openCheckout(auditId, offerCode);
       const opened = await openPaddleOverlay({
         clientToken: intent.client_token,
         environment: intent.environment,
@@ -126,22 +178,45 @@ export function PaymentPanel({ auditId, initial, onUnlocked }: Props) {
     };
   }, [flow, auditId, onUnlocked]);
 
+  // Повтор відкриває ТОЙ САМИЙ формат, що й перша спроба. Інакше
+  // людина, яка вибрала дешевший і натрапила на відмову провайдера,
+  // після «спробувати ще раз» платила б за дорожчий.
+  const retry = () => void start(chosen.current);
+
   if (flow.phase === "processing") return <Waiting />;
   if (flow.phase === "reconciling") return <Reconciling />;
-  if (flow.phase === "failed") return <Retry reason="failed" onRetry={start} />;
-  if (flow.phase === "canceled") return <Retry reason="canceled" onRetry={start} />;
-  if (flow.phase === "refunded") return <Retry reason="refunded" onRetry={start} />;
+  if (flow.phase === "failed") return <Retry reason="failed" onRetry={retry} />;
+  if (flow.phase === "canceled") return <Retry reason="canceled" onRetry={retry} />;
+  if (flow.phase === "refunded") return <Retry reason="refunded" onRetry={retry} />;
   if (flow.phase === "unavailable") {
-    return <Retry reason="unavailable" onRetry={start} />;
+    return <Retry reason="unavailable" onRetry={retry} />;
   }
-  return <Paywall busy={flow.phase === "opening"} onBuy={start} />;
+  const { audit, withPresence } = singleOffers(offers);
+  return (
+    <Paywall
+      busy={flow.phase === "opening"}
+      site={audit}
+      withPresence={withPresence}
+      onBuy={(code) => void start(code)}
+    />
+  );
 }
 
 /**
  * Пейвол. Каже, що саме відкриває повний аудит, — без ціни: вона живе
  * в прайсі провайдера, і плейсхолдер тут був би вигаданим числом.
  */
-function Paywall({ busy, onBuy }: { busy: boolean; onBuy: () => void }) {
+function Paywall({
+  busy,
+  site,
+  withPresence,
+  onBuy,
+}: {
+  busy: boolean;
+  site: PaywallOffer | null;
+  withPresence: PaywallOffer | null;
+  onBuy: (offerCode?: string) => void;
+}) {
   const { t } = useLocale();
   const unlocks = [
     "scores",
@@ -151,6 +226,19 @@ function Paywall({ busy, onBuy }: { busy: boolean; onBuy: () => void }) {
     "fixes",
     "download",
   ] as const;
+
+  const amount = (offer: PaywallOffer | null) =>
+    offer === null || offer.display_amount_minor === null
+      ? null
+      : money(offer.display_amount_minor, offer.exponent, offer.currency);
+
+  // Дві дії показуються лише тоді, коли каталог справді назвав обидва
+  // формати. Поки він мовчить, кнопка одна й без коду: сервер віддасть
+  // повний формат, тобто рівно те, що ця сторінка продавала завжди.
+  // Намалювати другу кнопку наосліп означало б пообіцяти ціну, якої ми
+  // не знаємо, і код пропозиції, якого в нас немає.
+  const bothKnown = site !== null && withPresence !== null;
+
   return (
     <Panel className="border-accent/40">
       <h2 className="text-base font-semibold text-foreground">
@@ -165,12 +253,60 @@ function Paywall({ busy, onBuy }: { busy: boolean; onBuy: () => void }) {
           </li>
         ))}
       </ul>
-      <div className="mt-5">
-        <Button size="lg" loading={busy} onClick={onBuy}>
-          {t("free.cta")}
-        </Button>
-      </div>
+      {bothKnown ? (
+        // Рівні колонки, однакові кнопки, однакова вага. Дрібніший
+        // другий варіант читався б як виняток для впертих.
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Action
+            busy={busy}
+            label={t("free.cta")}
+            price={amount(site)}
+            onClick={() => onBuy(site.code)}
+          />
+          <Action
+            busy={busy}
+            label={t("free.ctaPresence")}
+            price={amount(withPresence)}
+            note={t("free.presenceAdds")}
+            onClick={() => onBuy(withPresence.code)}
+          />
+        </div>
+      ) : (
+        <div className="mt-5">
+          <Button size="lg" loading={busy} onClick={() => onBuy()}>
+            {t("free.cta")}
+          </Button>
+        </div>
+      )}
     </Panel>
+  );
+}
+
+/** Одна з двох рівноцінних дій пейволу: кнопка, сума, одне пояснення. */
+function Action({
+  busy,
+  label,
+  price,
+  note,
+  onClick,
+}: {
+  busy: boolean;
+  label: string;
+  /** Ціна з каталогу або нічого. Вигаданих сум тут не буває. */
+  price: string | null;
+  note?: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Button size="lg" loading={busy} onClick={onClick}>
+        {label}
+      </Button>
+      {price ? (
+        <p className="text-sm font-semibold tabular-nums text-foreground">{price}</p>
+      ) : null}
+      {note ? <p className="text-sm text-muted">{note}</p> : null}
+    </div>
   );
 }
 

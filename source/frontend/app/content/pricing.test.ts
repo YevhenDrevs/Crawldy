@@ -43,25 +43,40 @@ const H1: Record<string, string> = {
   ru: "Сколько стоит проверка сайта",
 };
 
-/** Затверджене пояснення під H1 (власник, 2026-09-05). */
+/**
+ * Затверджене пояснення під H1.
+ *
+ * Переписане 2026-11-23 разом зі складом карток. Старе казало, що в усіх
+ * платних варіантах звіт однаковий, і це перестало бути правдою тієї
+ * хвилини, коли присутність стала окремим форматом за окрему ціну.
+ */
 const LEAD: Record<string, string> = {
-  en: "Every option gives you the same full report. You can pay for a single analysis, buy a pack at a lower price per site, or choose a monthly plan.",
-  uk: "У всіх платних варіантах ви отримуєте однаковий повний звіт. Можна оплатити одну перевірку, придбати пакет за нижчою ціною за сайт або обрати місячний план.",
-  de: "Bei allen Optionen erhalten Sie denselben vollständigen Bericht. Sie können eine einzelne Analyse bezahlen, ein Paket zu einem niedrigeren Preis pro Website kaufen oder einen Monatsplan wählen.",
-  es: "Todas las opciones incluyen el mismo informe completo. Puedes pagar un análisis individual, comprar un paquete con un precio más bajo por sitio o elegir un plan mensual.",
-  fr: "Toutes les formules donnent accès au même rapport complet. Vous pouvez payer une analyse unique, acheter un pack à un prix inférieur par site ou choisir un forfait mensuel.",
-  ru: "Во всех вариантах вы получаете одинаковый полный отчёт. Можно оплатить одну проверку, купить пакет по более низкой цене за сайт или выбрать месячный план.",
+  en: "A single analysis gives you the full report on your site. The AI Presence option adds a check of whether AI assistants mention your brand. The pack and the monthly plan offer the same analyses at lower rates.",
+  uk: "Разова перевірка дає повний звіт по вашому сайту. Варіант із AI Presence додає до нього перевірку того, чи згадують ваш бренд ШІ-асистенти. У пакеті й місячному плані перевірки за зниженими тарифами.",
+  de: "Die Einzelanalyse liefert den vollständigen Bericht zu Ihrer Website. Die Variante mit AI Presence prüft zusätzlich, ob KI-Assistenten Ihre Marke nennen. Paket und Monatsplan bieten dieselben Analysen zu günstigeren Sätzen.",
+  es: "El análisis individual ofrece el informe completo de tu sitio. La opción con AI Presence añade la comprobación de si los asistentes de IA mencionan tu marca. El paquete y el plan mensual ofrecen los mismos análisis a tarifas más bajas.",
+  fr: "L’analyse unique fournit le rapport complet de votre site. La formule avec AI Presence y ajoute la vérification des mentions de votre marque par les assistants IA. Le pack et le forfait mensuel proposent les mêmes analyses à des tarifs réduits.",
+  ru: "Разовая проверка даёт полный отчёт по вашему сайту. Вариант с AI Presence добавляет к нему проверку того, упоминают ли ваш бренд ИИ-ассистенты. В пакете и месячном плане проверки по сниженным тарифам.",
 };
 
-// Четвертий рядок превʼю затверджено українською; для інших пʼяти мов
-// затвердженого еквівалента в каталогах немає, і вигадувати його не можна.
-const FREE: Record<string, [string, string[], string]> = {
-  en: ["Free Preview", ["Overall website score", "Analysis coverage", "Three issues with the greatest impact"], "Check your site"],
-  uk: ["Безкоштовне прев’ю", ["Загальний бал сайту", "Покриття перевірки", "Три проблеми з найбільшим впливом", "Попередній результат без повного звіту"], "Перевірити сайт"],
-  de: ["Kostenlose Vorschau", ["Gesamtbewertung der Website", "Abdeckung der Prüfung", "Drei Probleme mit dem größten Einfluss"], "Website prüfen"],
-  es: ["Vista previa gratuita", ["Puntuación general del sitio", "Cobertura del análisis", "Tres problemas con mayor impacto"], "Comprobar el sitio"],
-  fr: ["Aperçu gratuit", ["Score global du site", "Couverture de l’analyse", "Trois problèmes ayant le plus d’impact"], "Vérifier le site"],
-  ru: ["Бесплатный предварительный результат", ["Общая оценка сайта", "Охват проверки", "Три проблемы с наибольшим влиянием"], "Проверить сайт"],
+/**
+ * Друга разова: назва, чотири рядки переліку, дія.
+ *
+ * Картки безкоштовного превʼю на сторінці цін більше немає (власник,
+ * 2026-11-23). Її місце займає саме цей формат, тож таблиця стоїть там
+ * само й перевіряє те саме, тільки про інший блок.
+ *
+ * Перший рядок переліку посилається на сусідню картку, решта три
+ * описують присутність. Назви чотирьох асистентів тут навмисно
+ * дослівні: людина має впізнати ті, якими користується.
+ */
+const PRESENCE: Record<string, [string, string[], string]> = {
+  en: ["Single analysis with AI Presence", ["Everything in the single analysis", "Measured mentions of your brand in ChatGPT, Claude, Gemini and Perplexity", "Model answers checked on the questions customers ask most", "Separate AI Presence report to download"], "Get the report with AI Presence"],
+  uk: ["Разова перевірка з AI Presence", ["Усе, що входить у разову перевірку", "Вимірювання згадок вашого бренду в ChatGPT, Claude, Gemini і Perplexity", "Перевірка відповідей моделей на часті запитання клієнтів", "Окремий звіт про присутність для завантаження"], "Отримати звіт з AI Presence"],
+  de: ["Einzelanalyse mit AI Presence", ["Alles aus der Einzelanalyse", "Messung der Nennungen Ihrer Marke in ChatGPT, Claude, Gemini und Perplexity", "Prüfung der Modellantworten auf häufige Kundenfragen", "Separater AI-Presence-Bericht zum Herunterladen"], "Bericht mit AI Presence erhalten"],
+  es: ["Análisis individual con AI Presence", ["Todo lo del análisis individual", "Medición de las menciones de tu marca en ChatGPT, Claude, Gemini y Perplexity", "Comprobación de las respuestas de los modelos a las preguntas más frecuentes de los clientes", "Informe de AI Presence aparte para descargar"], "Obtener el informe con AI Presence"],
+  fr: ["Analyse unique avec AI Presence", ["Tout ce que contient l’analyse unique", "Mesure des mentions de votre marque dans ChatGPT, Claude, Gemini et Perplexity", "Vérification des réponses des modèles aux questions fréquentes des clients", "Rapport AI Presence séparé à télécharger"], "Obtenir le rapport avec AI Presence"],
+  ru: ["Разовая проверка с AI Presence", ["Всё, что входит в разовую проверку", "Измерение упоминаний вашего бренда в ChatGPT, Claude, Gemini и Perplexity", "Проверка ответов моделей на частые вопросы клиентов", "Отдельный отчёт о присутствии для скачивания"], "Получить отчёт с AI Presence"],
 };
 
 const KINDS: Record<string, [string, string, string]> = {
@@ -167,13 +182,35 @@ describe("сторінка цін існує шістьма мовами й ма
 
 describe("рядки — точні формулювання власника", () => {
   for (const locale of LOCALES) {
-    it(`${locale}: безкоштовне превʼю — заголовок, перелік, дія`, () => {
+    it(`${locale}: разова з AI Presence — заголовок, перелік, дія`, () => {
       const source = code(locale);
-      const [heading, bullets, cta] = FREE[locale];
+      const [heading, bullets, cta] = PRESENCE[locale];
       expect(source).toContain(JSON.stringify(heading));
       for (const line of bullets) expect(source).toContain(JSON.stringify(line));
       expect(source).toContain(JSON.stringify(cta));
-      expect(bullets.length).toBe(locale === "uk" ? 4 : 3);
+      expect(bullets.length).toBe(4);
+    });
+
+    it(`${locale}: безкоштовне превʼю зі сторінки цін прибрано`, () => {
+      // Саме превʼю лишається безкоштовним, просто про нього говорить
+      // головна сторінка й кнопка шапки. Сторінка цін говорить про ціни
+      // (власник, 2026-11-23). Повернення картки сюди має бути рішенням,
+      // а не наслідком копіювання старого файлу.
+      const source = code(locale);
+      expect(source).not.toContain("free: {");
+      expect(source).not.toContain("bullets:");
+    });
+
+    it(`${locale}: дешевша разова не обіцяє присутності`, () => {
+      // Між закриттям блока `single` і відкриттям `presence` слова
+      // Presence бути не може: саме там колись стояв рядок, що обіцяв
+      // її в форматі, де за неї не заплачено.
+      const source = code(locale);
+      const start = source.indexOf("single: {");
+      const end = source.indexOf("presence: {", start);
+      expect(start, "блок разової").toBeGreaterThan(-1);
+      expect(end, "блок присутності").toBeGreaterThan(start);
+      expect(source.slice(start, end)).not.toContain("Presence");
     });
 
     it(`${locale}: три платні формати, їхні дії й позначка Monthly`, () => {
@@ -241,18 +278,56 @@ describe("жодного числа й жодної забороненої об�
 });
 
 describe("компонент рендерить конфігурацію, а не власні числа", () => {
-  it("чотири картки в ряд стоять завжди: превʼю → разова → пакет → місячний", () => {
+  it("чотири картки в ряд: разова → разова з Presence → пакет → план", () => {
     expect((component.match(/<Card\n/g) ?? []).length).toBe(4);
     expect(component).toContain("lg:grid-cols-4");
-    // Превʼю — картка в ряду, а не смуга на всю ширину над платними.
     expect(component).not.toContain('aria-labelledby="pricing-free"');
     expect(component).not.toContain("md:grid-cols-3");
-    const order = ["strings.free.heading", "strings.single.kind", "strings.pack.kind", "strings.monthly.kind"]
-      .map((marker) => component.indexOf(marker));
+    const order = [
+      "strings.single.kind",
+      "strings.presence.kind",
+      "strings.pack.kind",
+      "strings.monthly.kind",
+    ].map((marker) => component.indexOf(marker));
     expect(order.every((at, i) => at > -1 && (i === 0 || at > order[i - 1]!))).toBe(true);
-    // Превʼю без ціни: безкоштовне за означенням.
-    const free = component.slice(component.indexOf("strings.free.heading"), component.indexOf("strings.single.kind"));
-    expect(free).not.toContain("price=");
+    // Картки безкоштовного превʼю тут більше немає (власник,
+    // 2026-11-23). Дорога до превʼю лишилась у кнопці шапки, тож
+    // `resultHref` цьому компоненту більше не потрібен.
+    expect(component).not.toContain("strings.free");
+    expect(component).not.toContain("resultHref");
+  });
+
+  it("обидві разові мають ціну, і ціни в них різні за побудовою", () => {
+    // Дешевша картка без ціни виглядала б як безкоштовна, а саме цю
+    // помилку ми щойно прибрали зі сторінки.
+    const first = component.indexOf("strings.single.kind");
+    const second = component.indexOf("strings.presence.kind");
+    const third = component.indexOf("strings.pack.kind");
+    expect(component.slice(first, second)).toContain("price={priceText(single,");
+    expect(component.slice(second, third)).toContain("price={priceText(withPresence,");
+  });
+
+  it("дві разові розрізняються числом присутності, а не новим типом", () => {
+    // Окремий тип пропозиції назвав би вдруге те, що вже записано в
+    // даних, і два описи однієї речі неминуче розійшлися б.
+    const pricing = readFileSync(join(__dirname, "..", "lib", "pricing.ts"), "utf-8");
+    expect(pricing).toContain('offer.offer_type === "single"');
+    expect(pricing).toContain("offer.presence_credits === 0");
+    expect(pricing).toContain("offer.presence_credits > 0");
+    expect(pricing).not.toContain("audit_only");
+  });
+
+  it("правило вибору двох разових одне на обидва місця", () => {
+    // Сторінка цін і пейвол під безкоштовним результатом вибирають ті
+    // самі дві пропозиції. Поки це були два окремі фільтри, вони
+    // розійшлися б, і сторінка показувала б одну ціну, а каса брала б
+    // іншу.
+    expect(component).toContain("singleOffers(offers ?? [])");
+    const panel = readFileSync(join(__dirname, "..", "components", "PaymentPanel.tsx"), "utf-8");
+    expect(panel).toContain("singleOffers(");
+    for (const source of [component, panel]) {
+      expect(source).not.toContain("presence_credits === 0");
+    }
   });
 
   it("динамічні значення — ціна/валюта, обидві кількості пакета, Presence тарифу", () => {
@@ -271,9 +346,11 @@ describe("компонент рендерить конфігурацію, а н�
       expect(source).not.toContain("interval");
       expect(source).not.toMatch(/presence:\s*\d/);
     }
-    // Разова: склад фіксований 1 + 1, числа не читаються з каталогу.
+    // Разова: одна перевірка сайту, число не читається з каталогу.
     expect(lines).toContain("SINGLE_ANALYSES = 1");
-    expect(lines).toContain("SINGLE_PRESENCE = 1");
+    // Кількості присутності в разовій більше немає взагалі: присутність
+    // це окремий формат, а не число всередині дешевшого.
+    expect(lines).not.toContain("SINGLE_PRESENCE");
   });
 
   it("відсутнє число ховає лише число: рядок лишається підписом", () => {
@@ -295,20 +372,26 @@ describe("компонент рендерить конфігурацію, а н�
     expect(component).toContain("aria-busy={loading || undefined}");
   });
 
-  it("разова — в анонімну касу, пакет і план — у касу з акаунтом", () => {
+  it("обидві разові — в анонімну касу, пакет і план — у касу з акаунтом", () => {
     // Разова з 6 вересня 2026 починається з оплати й БЕЗ реєстрації:
     // до того ця кнопка вела на форму превʼю, а спроба провести її
-    // через `/checkout` вимагала б входу. Превʼю лишилось окремою
-    // карткою й веде на ту саму форму.
-    expect(component).toContain("cta={{ href: resultHref, label: strings.free.cta }}");
-    expect(component).toContain("cta={{ href: buyHref, label: strings.single.cta }}");
-    expect(component).toContain('const buyHref = locale === "en" ? "/buy" : `/buy?lang=${locale}`');
+    // через `/checkout` вимагала б входу.
+    expect(component).toContain("cta={{ href: buyHref(single), label: strings.single.cta }}");
+    expect(component).toContain("cta={{ href: buyHref(withPresence), label: strings.presence.cta }}");
     expect(component).not.toContain('code: single.code }, locale)');
     expect(component).toContain('checkoutHref({ kind: "offer", code: pack.code }, locale)');
     expect(component).toContain('checkoutHref({ kind: "plan", code: monthly.code }, locale)');
     // Зупинки в кабінеті на шляху до оплати немає.
     expect(component).not.toContain("/app/plan?buy=");
     expect(component).not.toContain("/app/plan?subscribe=");
+  });
+
+  it("код пропозиції їде в адресу каси, бо разових дві", () => {
+    // Без коду каса вгадувала б, за яку з двох заплатили, і вгадувала б
+    // за полем сортування. Мова лишається в тій самій адресі.
+    expect(component).toContain('params.set("offer", offer.code)');
+    expect(component).toContain('params.set("lang", locale)');
+    expect(component).toContain("`/buy?${query}`");
   });
 
   it("місячна ціна несе одиницю періоду, разова — ні", () => {

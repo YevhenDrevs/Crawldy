@@ -88,3 +88,32 @@ export function pluralize(locale: string, n: number, forms: PluralForms): string
   const template = bag[category] ?? forms.other;
   return template.replace("{n}", String(n));
 }
+
+/** Рівно ті поля пропозиції, за якими розрізняються дві разові. */
+export interface SingleCandidate {
+  code: string;
+  offer_type: string;
+  presence_credits: number;
+}
+
+/**
+ * Дві разові пропозиції: перевірка сайту й вона ж разом із присутністю.
+ *
+ * Правило одне на весь продукт, і живе воно тут саме тому, що місць
+ * вибору два: сторінка цін і пейвол під безкоштовним результатом. Поки
+ * це було два окремі фільтри, вони неминуче розійшлися б, і сторінка
+ * показувала б одну ціну, а каса брала б іншу.
+ *
+ * Розрізняються формати кількістю присутності, а не окремим типом
+ * пропозиції. Тип назвав би вдруге те, що вже записано числом, і два
+ * описи однієї речі розходяться завжди, питання лише коли.
+ */
+export function singleOffers<T extends SingleCandidate>(
+  offers: readonly T[],
+): { audit: T | null; withPresence: T | null } {
+  const singles = offers.filter((offer) => offer.offer_type === "single");
+  return {
+    audit: singles.find((offer) => offer.presence_credits === 0) ?? null,
+    withPresence: singles.find((offer) => offer.presence_credits > 0) ?? null,
+  };
+}

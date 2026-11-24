@@ -1,8 +1,20 @@
 "use client";
 
 /**
- * Чотири картки сторінки цін: Безкоштовне превʼю / Разова / Пакет /
+ * Чотири картки сторінки цін: Разова / Разова з AI Presence / Пакет /
  * Місячний план.
+ *
+ * ## Разових дві, і це не два рівні одного продукту
+ *
+ * Присутність коштує нам грошей за кожен прогін, перевірка сайту не
+ * коштує майже нічого. Продавати їх однією ціною означало б або віддати
+ * присутність задарма, або взяти за сайт більше, ніж він вартий. Тому
+ * формати два, і різняться вони саме складом, а не кількістю.
+ *
+ * Картка безкоштовного превʼю звідси прибрана за рішенням власника
+ * 2026-11-23. Саме превʼю лишається, і дорога до нього теж: головна дія
+ * шапки веде на безкоштовний аудит з КОЖНОЇ сторінки, тож на сторінці
+ * цін воно за один клік угорі. Сторінка цін говорить про ціни.
  *
  * ## Чотири рівні блоки, а не смуга й три картки
  *
@@ -48,7 +60,7 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "./Icon";
 import { API_URL } from "../lib/api";
-import { monthlyToShow, type PluralForms } from "../lib/pricing";
+import { monthlyToShow, singleOffers, type PluralForms } from "../lib/pricing";
 import { checkoutHref } from "../lib/checkout-intent";
 import {
   type MonthlyPlan,
@@ -58,6 +70,7 @@ import {
   monthlyPriceText,
   packLines,
   packUnitNote,
+  presenceLines,
   priceText,
   singleLines,
 } from "../lib/pricing-lines";
@@ -137,7 +150,13 @@ function Card({
           </span>
         ) : null}
       </div>
-      <h2 className="font-medium text-primary">{heading}</h2>
+      {/* Місце під два рядки назви резервується так само, як рядок
+          позначки вище, і з тієї самої причини. «Разова перевірка з AI
+          Presence» не вміщується в рядок, і без цього її перелік
+          починався нижче, ніж у трьох сусідів. На телефоні картки
+          стоять одна під одною, вирівнювати нема з чим, тож там
+          резерву немає. */}
+      <h2 className="font-medium text-primary sm:min-h-12">{heading}</h2>
       <ul className="mt-3 flex flex-col gap-1.5 text-sm text-secondary">
         {lines.map((line) => (
           <li key={line} className="flex items-start gap-2">
@@ -215,21 +234,29 @@ export function PricingCards({
   // Кожен формат бере СВОЮ налаштовану пропозицію, якщо вона є. Немає —
   // картка все одно рендериться з повним складом: формат оплати існує
   // незалежно від того, чи заведено для нього ціну.
-  const single = (offers ?? []).find((offer) => offer.offer_type === "single") ?? null;
+  // Дві разові розрізняються кількістю присутності, а не окремим типом.
+  // Саме правило живе в `lib/pricing.ts`, бо місць вибору два: ця
+  // сторінка й пейвол під безкоштовним результатом.
+  const { audit: single, withPresence } = singleOffers(offers ?? []);
   const pack = (offers ?? []).find((offer) => offer.offer_type === "pack") ?? null;
   const monthly = monthlyToShow(plans ?? []);
-
-  // Превʼю і разова покупка не потребують акаунта. Мова їде в адресі:
-  // гостьовий екран говорить усіма шістьма мовами сайту.
-  const resultHref = locale === "en" ? "/result" : `/result?lang=${locale}`;
   // Пряма дорога в касу. Вхід, якщо він потрібен, влаштовує сама сторінка
   // оплати: людина, яка вже увійшла, не має бачити ані форми входу, ані
   // кабінету, а та, що не увійшла, повертається сюди ж після входу.
   // Раніше кнопка вела в кабінет на «Тариф і використання», і каса
   // відкривалася вже там — зайвий екран на шляху до оплати.
   const cabinetHref = `/login?lang=${locale}&next=${encodeURIComponent("/app/plan")}`;
-  // Анонімна каса разової перевірки: оплата → сайт → звіти, без входу.
-  const buyHref = locale === "en" ? "/buy" : `/buy?lang=${locale}`;
+  // Анонімна каса разової перевірки: оплата, потім сайт, потім звіти,
+  // без входу. Код пропозиції їде в адресі, бо разових дві, і каса не
+  // має вгадувати, за яку з них заплатили. Без коду сервер віддає ту,
+  // що з присутністю, тож стара закладка купує те саме, що й раніше.
+  const buyHref = (offer: PublicOffer | null) => {
+    const params = new URLSearchParams();
+    if (offer) params.set("offer", offer.code);
+    if (locale !== "en") params.set("lang", locale);
+    const query = params.toString();
+    return query ? `/buy?${query}` : "/buy";
+  };
 
   // Поки числа їдуть — крапки, а не «ціна за запитом»: друге було б
   // неправдою протягом пів секунди. Сітка при цьому вже стоїть повністю.
@@ -246,27 +273,27 @@ export function PricingCards({
         aria-busy={loading || undefined}
       >
         <Card
-          heading={strings.free.heading}
-          lines={strings.free.bullets}
-          cta={{ href: resultHref, label: strings.free.cta }}
-        />
-
-        <Card
           heading={strings.single.kind}
           lines={singleLines(locale, strings)}
           note={strings.single.note}
           price={priceText(single, pending)}
-          // Спершу оплата, потім дані сайту — і БЕЗ реєстрації
-          // (рішення власника 2026-09-06). До того ця кнопка вела на
-          // форму безкоштовного превʼю, і людина, яка натиснула
-          // «купити», бачила перевірку сайту замість каси. Превʼю
-          // лишилось окремою карткою ліворуч — хто хоче спершу
-          // подивитись, іде туди свідомо.
+          // Спершу оплата, потім дані сайту, і БЕЗ реєстрації (рішення
+          // власника 2026-09-06). До того ця кнопка вела на форму
+          // безкоштовного превʼю, і людина, яка натиснула «купити»,
+          // бачила перевірку сайту замість каси.
           //
-          // Адреса тут своя, не спільна з пакетом: `/checkout` — це
+          // Адреса тут своя, не спільна з пакетом. `/checkout` це
           // дорога через акаунт, бо пакет і підписка лягають на баланс.
           // Разову купує гість, і акаунта в неї немає ніде.
-          cta={{ href: buyHref, label: strings.single.cta }}
+          cta={{ href: buyHref(single), label: strings.single.cta }}
+        />
+
+        <Card
+          heading={strings.presence.kind}
+          lines={presenceLines(strings)}
+          note={strings.presence.note}
+          price={priceText(withPresence, pending)}
+          cta={{ href: buyHref(withPresence), label: strings.presence.cta }}
         />
 
         <Card

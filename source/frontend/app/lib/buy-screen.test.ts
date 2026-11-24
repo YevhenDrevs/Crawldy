@@ -25,9 +25,12 @@ const CARDS = readFileSync(
 ).replace(/\r\n/g, "\n");
 
 describe("разова покупка починається з оплати й без акаунта", () => {
-  it("картка «Разова перевірка» веде в анонімну касу", () => {
-    expect(CARDS).toContain("cta={{ href: buyHref, label: strings.single.cta }}");
-    // Ані форми превʼю, ані дороги через кабінет для цієї картки.
+  it("обидві разові картки ведуть в анонімну касу", () => {
+    expect(CARDS).toContain("cta={{ href: buyHref(single), label: strings.single.cta }}");
+    expect(CARDS).toContain(
+      "cta={{ href: buyHref(withPresence), label: strings.presence.cta }}",
+    );
+    // Ані форми превʼю, ані дороги через кабінет для цих карток.
     expect(CARDS).not.toContain('code: single.code }, locale)');
   });
 
@@ -38,7 +41,7 @@ describe("разова покупка починається з оплати й 
   });
 
   it("каса відкривається до того, як існує аудит", () => {
-    expect(PAGE).toContain("openOrder()");
+    expect(PAGE).toContain("openOrder(offer)");
     expect(ORDER).toContain('"/v1/public/orders"');
     // Сайт питають ПІСЛЯ оплати — окремим викликом, окремим станом.
     expect(PAGE).toContain("startPaidAudit(purchaseId, url)");
